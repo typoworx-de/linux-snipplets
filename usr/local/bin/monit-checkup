@@ -1,0 +1,7 @@
+#!/bin/bash
+PATH="$PATH:/sbin:/bin";
+
+# CRON-Taskrunner checking Monit is running fine
+if [ ! `pidof monit` > 0 ]; then
+	 /usr/sbin/service monit restart || echo "Monit-Checkup failed to restart" | mail -s "MONIT Alert -- MONIT is Offline" "alert@typoworx.de"
+fi
