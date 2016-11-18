@@ -1,0 +1,2 @@
+# Check MONIT is running
+*/2 * * * *	root	/usr/local/bin/monit-checkup
