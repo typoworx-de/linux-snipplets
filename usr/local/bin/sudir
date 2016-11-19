@@ -1,0 +1,28 @@
+#!/bin/bash
+if [[ -z $@ ]];
+then
+        echo "-- Syntax --";
+        echo "Sudir is like 'sudo' by automatically using the given directory-owner, like this:"
+        echo -e "$> sudir [Path] [command / arguments]\n";
+        exit;
+fi
+
+_WORKDIR=$([[ -z "$1"]] && `pwd` || echo $1);
+_DIRUSER="";
+
+if [[ ! -z "$_WORKDIR" ]];
+then
+        _DIRUSER=$(stat -c '%U' $_WORKDIR);
+else
+        echo "Error: No Workdir given!"
+        exit;
+fi
+
+if [[ ! -z $_WORKDIR ]] && [[ ! -z $_DIRUSER ]];
+then
+        echo "SU to '$_DIRUSER'";
+        sudo -u "$_DIRUSER" "${@: 2}";
+else
+        echo "Error: Cannot determine Dir-User for '$_WORKDIR'";
+        exit;
+fi
