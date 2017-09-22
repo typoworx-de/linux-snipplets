@@ -15,10 +15,18 @@ TASK=`basename $1`;
 
 if [[ "$(which $TASK)-ne ''" || "-x $TASK" ]];
 then
-        ( $@ & ) > /dev/null 2>&1;
-        PID=$(pidof $@);
+        eval "$@ &" > /dev/null 2>&1;
+        PID=$!;
+        EXIT_CODE=$?;
         echo "Starting '$@' with pid $PID";
-        htop -p $PID;
+
+        if [[ -z $PID ]];
+        then
+                echo "Got no PID - cannot start HTOP Monitoring!";
+                echo "Process already done?! (Exit-Code '$EXIT_CODE')";
+        else
+                htop -p $PID;
+        fi
 else
         echo "Error: Cannot execute '$@'";
 fi
