@@ -1,0 +1,24 @@
+#!/bin/bash
+
+SCRIPT_NAME=$(basename $0);
+
+if [[ -z $@ ]];
+then
+        echo -e "\033[1;34m$SCRIPT_NAME will try to start a command\nand afterwards starting HTOP to monitor the process\033[0m\n";
+        echo "Syntax is simply like 'watch'"
+        echo "SCRIPT_NAME= [any command and parameters]";
+        echo "";
+        exit;
+fi
+
+TASK=`basename $1`;
+
+if [[ "$(which $TASK)-ne ''" || "-x $TASK" ]];
+then
+        ( $@ & ) > /dev/null 2>&1;
+        PID=$(pidof $@);
+        echo "Starting '$@' with pid $PID";
+        htop -p $PID;
+else
+        echo "Error: Cannot execute '$@'";
+fi
