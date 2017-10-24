@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [[ $(whoami) != "root" ]];
+then
+        echo "Root-Permissions required!";
+        echo "use 'sudo $0'";
+        exit;
+fi
+
+if [[ -z $@ ]];
+then
+        echo "Syntax $0 [btrfs-device] [subvolume-id of btrfs] [restore-path]";
+        echo "Example $0 /dev/mapper/DataStorage-btrfs 275 /backup/restore";
+fi
+
+btrfsVolume=$1;
+volumeId=$2;
+restoreDir=$3;
+
+echo "Scanning volume-id ${btrfsVolume} and sub-volume-id ${volumeId}";
+btrfsBlocks=$(btrfs-find-root ${btrfsVolume} | grep -Po "Well block ([^\(]+)" | grep -oE "[0-9]+" | tr -s ' ' | cut -d ' ' -f 2);
+
+echo -e "\033[0;31mFound $(echo $btrfsBlocks | wc -w) Blocks\033[0m\n\n";
+
+for blockId in $btrfsBlocks
+do
+        echo -e "\033[0;31mProcessing ${blockId}\033[0m";
+        btrfs restore -r ${volumeId} -t ${blockId} -i -v -s ${btrfsVolume} ${restoreDir};
+        echo -e "\n";
+done
+
+echo "Done with all blocks!";
