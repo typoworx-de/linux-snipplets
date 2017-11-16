@@ -5,7 +5,15 @@ function threads_by_processname()
         echo $(ps ax | grep ${1} | wc -l);
 }
 
-printf "_%.0s" {1..80}
+function string_repeat() 
+{
+ str=$1
+ num=$2
+ v=$(printf "%-${num}s" "$str")
+ echo "${v// /$str}"
+}
+
+string_repeat '_' `tput cols`;
 echo -e "\n";
 
 echo -e "Memory usage:";
@@ -16,5 +24,5 @@ echo -e "Apache threads:\t" $(threads_by_processname 'apache2');
 echo -e "NGINX threads:\t" $(threads_by_processname 'nginx');
 echo -e "PHP-FPM threads:" $(threads_by_processname 'php-fpm');
 
-printf "_%.0s" {1..80}
+string_repeat '_' `tput cols`;
 echo;
