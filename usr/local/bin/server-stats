@@ -1,0 +1,20 @@
+#!/bin/bash
+
+function threads_by_processname()
+{
+        echo $(ps ax | grep ${1} | wc -l);
+}
+
+printf "_%.0s" {1..80}
+echo -e "\n";
+
+echo -e "Memory usage:";
+free -m;
+echo;
+
+echo -e "Apache threads:\t" $(threads_by_processname 'apache2');
+echo -e "NGINX threads:\t" $(threads_by_processname 'nginx');
+echo -e "PHP-FPM threads:" $(threads_by_processname 'php-fpm');
+
+printf "_%.0s" {1..80}
+echo;
