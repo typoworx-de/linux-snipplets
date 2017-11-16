@@ -1,0 +1,52 @@
+#!/bin/bash
+
+function usage()
+{
+        echo "Syntax:";
+        echo "$(basename $0) [path-to-binary] [path-to-chroot]";
+        exit 1;
+}
+
+function dryrun_copy_file_and_dependencies()
+{
+    JAIL="$1";
+    PROGRAM="$2"
+    DEPENDENCIES=$(ldd "$PROGRAM" | awk '{ print $3 }' | grep -v '(' | grep -v 'not a dynamic executable')
+
+    DR="[DRY RUN]  ";
+    echo "${DR}mkdir -p '${JAIL}$(dirname $PROGRAM)'";
+    echo "${DR}cp -Lv '$PROGRAM' '${JAIL}${PROGRAM}'";
+
+    for f in $DEPENDENCIES;
+    do
+        echo "${DR}mkdir -p '${JAIL}$(dirname $f)'";
+        echo "${DR}cp -Lv '$f' '${JAIL}${f}'";
+    done
+}
+
+function copy_file_and_dependencies()
+{
+    JAIL="$1";
+    PROGRAM="$2"
+    DEPENDENCIES=$(ldd "$PROGRAM" | awk '{ print $3 }' | grep -v '(' | grep -v 'not a dynamic executable')
+
+    mkdir -p "${JAIL}$(dirname $PROGRAM)"
+    cp -Lv "$PROGRAM" "${JAIL}${PROGRAM}"
+
+    for f in $DEPENDENCIES;
+    do
+        mkdir -p "${JAIL}$(dirname $f)"
+        cp -Lv "$f" "${JAIL}${f}"
+    done
+}
+
+[[ -z $@ ]] || [[ ! -f $1 ]] || [[ ! -d $2 ]] && {
+        usage;
+}
+
+[[ $@ == *-d* ]] || [[ $@ == *--dry-run* ]] && {
+        dryrun_copy_file_and_dependencies /home/jail/relaunch.lenze.com/ /usr/sbin/usermod;
+        exit;
+}
+
+copy_file_and_dependencies /home/jail/relaunch.lenze.com/ /usr/sbin/usermod;
