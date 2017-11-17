@@ -2,4 +2,4 @@
 
 echo 'GIT Wrapper for www-data in '$(pwd);
 echo;
-sudir `pwd` - www-data -c "/usr/bin/git $@"
+sudir `pwd` -c "$(/usr/bin/git $@)"
