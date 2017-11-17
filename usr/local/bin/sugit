@@ -1,0 +1,5 @@
+#!/bin/bash
+
+echo 'GIT Wrapper for www-data in '$(pwd);
+echo;
+sudir `pwd` - www-data -c "/usr/bin/git $@"
