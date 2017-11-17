@@ -1,5 +1,5 @@
 #!/bin/bash
-if [[ -z $@ ]];
+if [[ -z $@ ]] || [[ $@ == *-h* ]] || [[ $@ == **--help** ]];
 then
         echo "-- Syntax --";
         echo "Sudir is like 'sudo' by automatically using the given directory-owner, like this:"
@@ -21,7 +21,7 @@ fi
 if [[ ! -z $_WORKDIR ]] && [[ ! -z $_DIRUSER ]];
 then
         echo "SU to '$_DIRUSER'";
-        sudo su - ${_DIRUSER} -m;
+        sudo su - ${_DIRUSER} -m ${@: 2};
 else
         echo "Error: Cannot determine Dir-User for '$_WORKDIR'";
         exit;
