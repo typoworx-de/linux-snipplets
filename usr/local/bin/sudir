@@ -1,5 +1,5 @@
 #!/bin/bash
-if [[ -z $@ ]] || [[ $@ == *-h* ]] || [[ $@ == **--help** ]];
+if [[ -z $@ ]];
 then
         echo "-- Syntax --";
         echo "Sudir is like 'sudo' by automatically using the given directory-owner, like this:"
