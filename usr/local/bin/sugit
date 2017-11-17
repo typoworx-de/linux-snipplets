@@ -1,5 +1,7 @@
 #!/bin/bash
 
+git=`which git`;
+
 echo 'GIT Wrapper for www-data in '$(pwd);
 echo;
-sudir `pwd` -c "$(/usr/bin/git $@)"
+sudir `pwd` -c sh -c "$git $*";
