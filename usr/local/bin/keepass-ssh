@@ -100,6 +100,5 @@ then
         notify-send -u low "SSH" -t 10 -a $(basename $0) "${Notification}";
 fi
 
-exit
 #-echo $Cmd;exit
 /usr/bin/sshpass -p "${AuthPass}" $Cmd || throwError "Error executing $Cmd";
