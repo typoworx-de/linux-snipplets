@@ -9,6 +9,7 @@ fi
 
 _WORKDIR=$(test -z "$1" && `pwd` || echo ${1});
 _DIRUSER="";
+_CMD=${@: 2};
 
 if [[ ! -z "$_WORKDIR" ]];
 then
@@ -18,10 +19,17 @@ else
         exit;
 fi
 
+if [[ -z $_CMD ]];
+then
+        _CMD=`which bash`;
+else
+        _CMD="su -c ${_CMD}";
+fi
+
 if [[ ! -z $_WORKDIR ]] && [[ ! -z $_DIRUSER ]];
 then
         echo "SU to '$_DIRUSER'";
-        sudo su - ${_DIRUSER} -m "${@: 2}";
+        sudo -H -l -u ${_DIRUSER} $_CMD;
 else
         echo "Error: Cannot determine Dir-User for '$_WORKDIR'";
         exit;
