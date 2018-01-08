@@ -29,7 +29,7 @@ fi
 if [[ ! -z $_WORKDIR ]] && [[ ! -z $_DIRUSER ]];
 then
         echo "SU to '$_DIRUSER'";
-        sudo -H -l -u ${_DIRUSER} $_CMD;
+        sudo -H -u ${_DIRUSER} $_CMD;
 else
         echo "Error: Cannot determine Dir-User for '$_WORKDIR'";
         exit;
