@@ -11,5 +11,8 @@ do
 
   echo "Disabling $cronfile";
   sudo mv $cronfile $cronfile.disabled;
+  sudo chmod -x $cronfile.disabled;
   sudo chattr +i $cronfile.disabled;
 done
+
+sudo service cron reload;
