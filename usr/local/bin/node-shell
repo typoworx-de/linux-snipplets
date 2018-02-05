@@ -1,0 +1,8 @@
+#!/bin/bash
+_shellRoot=$(pwd);
+_projectName=$(basename $_shellRoot);
+
+npmPrefix=$(npm config get prefix);
+
+debian_chroot="nodejs ${_projectName}";
+bash --login -c "npm config set prefix \"${_shellRoot}/usr\";export PATH=\"${_shellRoot}/usr:$PATH\";export debian_chroot=\"nodejs ${_projectName}\";bash"
