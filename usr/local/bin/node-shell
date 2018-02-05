@@ -1,8 +1,15 @@
 #!/bin/bash
 _shellRoot=$(pwd);
 _projectName=$(basename $_shellRoot);
+_localPath="${_shellRoot}/.npm-local";
 
-npmPrefix=$(npm config get prefix);
+#npmPrefix=$(npm config get prefix);
 
 debian_chroot="nodejs ${_projectName}";
-bash --login -c "npm config set prefix \"${_shellRoot}/usr\";export PATH=\"${_shellRoot}/usr:$PATH\";export debian_chroot=\"nodejs ${_projectName}\";bash"
+bash --login -c "\
+npm config set prefix \"${_localPath}\"; \
+export PATH=\"${_localPath}/bin:$PATH\"; \
+export N_PREFIX=\"${_localPath}/node\"; \
+export debian_chroot=\"nodejs ${_projectName}\"; \
+bash \
+"
