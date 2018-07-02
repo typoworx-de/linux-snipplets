@@ -7,6 +7,14 @@ then
         exit;
 fi
 
+# Detect if already sudo'ed as root.
+# else sudo to allow sudoers.d without explicit sudo/password
+if [[ $USER != "root" ]];
+then
+        sudo $0 $@;
+        exit;
+fi
+
 _WORKDIR=$(test -z "$1" && `pwd` || echo ${1});
 _DIRUSER="";
 _CMD=${@: 2};
