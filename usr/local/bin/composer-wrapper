@@ -31,5 +31,5 @@ then
         fi
 fi
 
-ecgi "Using ${PHP_BINARY}";
+echo "Using ${PHP_BINARY}";
 $PHP_BINARY $(dirname $0)/composer.phar $@;
