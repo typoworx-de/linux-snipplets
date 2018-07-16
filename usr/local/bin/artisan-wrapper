@@ -1,0 +1,35 @@
+#!/bin/bash
+
+#
+# Automatically detect desired PHP-Version by composer.json and try to match it with system provided PHP-Binary
+#
+
+PHP_BINARY=$(which php | head -n1);
+
+if [[ ! -x $(which jq) ]];
+then
+        echo "jq binary required!";
+        exit 1
+fi
+
+if [[ -r composer.json ]];
+then
+        echo "Determining PHP-Version from composer.json";
+        COMPOSER_PHP_VERSION=$(jq -r '[.require.php|tostring]' composer.json | grep -Eo "[0-9\.]+");
+        COMPOSER_PHP_VERSION_ARRAY=( ${COMPOSER_PHP_VERSION//./ } )
+
+        DESIRED_MAJOR_VERSION=${COMPOSER_PHP_VERSION_ARRAY[0]}.${COMPOSER_PHP_VERSION_ARRAY[1]};
+
+        echo "Searching PHP ${DESIRED_MAJOR_VERSION}";
+
+        if [[ $COMPOSER_PHP_VERSION > 7 ]];
+        then
+                PHP_BINARY=$(which php${DESIRED_MAJOR_VERSION} php7 | head -n1);
+        elif [[ $COMPOSER_PHP_VERSION > 5 ]];
+        then
+                PHP_BINARY=$(which php5 php5.6 | head -n1);
+        fi
+fi
+
+echo "Using ${PHP_BINARY}";
+$PHP_BINARY $(pwd)/artisan $@;
