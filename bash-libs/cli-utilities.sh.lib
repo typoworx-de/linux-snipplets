@@ -29,6 +29,34 @@ function message {
   echo -e "${vanityLevel[${1}]}${2}${vanityLevel['reset']}";
 }
 
+
+#
+# Echo'es and logs simultanously
+#
+# @param string message
+# @param string logFile
+function echo_log {
+  if [[ ! -d $(dirname ${1}) ]];
+  then
+    message warning "Path to ${1} does not exist!";
+    exit 1;
+  fi
+
+  # fetch stdin
+  while read data; do
+    printf "${data}\n";
+    printf "${data}\n" >> ${1};
+  done
+}
+
+# @param string logFile
+function purge_log {
+  test -f ${1} && {
+    truncate -s 0 ${1};
+  }
+}
+
+
 #
 # @param string command to execute
 function try {
@@ -41,6 +69,16 @@ function try {
   fi
 
   return 0;
+}
+
+
+#
+# @param string $0 (script-name)
+function get_threads {
+  declare -i _threads;
+  _threads=$(pgrep -f ${1} | wc -l);
+
+  echo $_threads;
 }
 
 # 
