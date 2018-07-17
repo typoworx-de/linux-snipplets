@@ -76,7 +76,7 @@ function try {
 # @param string $0 (script-name)
 function get_threads {
   declare -i _threads;
-  _threads=$(pgrep -f ${1} | wc -l);
+  _threads=$(pidof -x ${1} | wc -w);
 
   echo $_threads;
 }
@@ -86,7 +86,8 @@ function get_threads {
 # @param int    number of allowed threads
 function limit_threads {
   declare -i _threads;
-  _threads=$(pgrep -f ${1} | wc -l);
+  _threads=$(pidof -x ${1} | wc -w);
+  _threads=$((_threads-1));
 
   if [[ ${_threads} > ${2} ]];
   then
