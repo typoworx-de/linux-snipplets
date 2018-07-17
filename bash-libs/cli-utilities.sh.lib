@@ -82,11 +82,11 @@ function try {
 #
 # @param string $0 (script-name)
 function get_threads {
-  declare -i count;
-  #-declare -i _threads;
-  #-_threads=$(pidof -x ${1} | wc -w);
+  cmd=$(realpath ${1});
 
-  pid=$(pidof -x ${1});
+  declare -i count;
+
+  pid=$(pidof -x ${cmd});
 
   if [[ -z ${pid} ]];
   then
@@ -95,19 +95,19 @@ function get_threads {
   fi
 
   count=0;
-  for pid in $(pidof -x ${1}); do
+  for pid in $(pidof -x ${cmd}); do
     ppid=$(ps -p ${pid} o ppid=);
 
     if [[ -z ${ppid} ]];
     then
-	continue;
+        continue;
     fi
 
     # Check if command-line by pid equals ppid
     if [[ "$(ps -p ${pid} -o cmd=)" != "$(ps -p ${ppid} -o cmd=)" ]];
     then
-	# if non-matching it's a parent-process!
-	count+=1;
+        # if non-matching it's a parent-process!
+        count+=1;
     fi
   done
 
