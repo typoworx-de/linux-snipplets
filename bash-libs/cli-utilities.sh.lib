@@ -119,8 +119,7 @@ function get_threads {
 # @param int	number of allowed threads
 function limit_threads {
   declare -i _threads;
-  _threads=$(pidof -x ${1} | wc -w);
-  _threads=$((_threads-1));
+  _threads=$(get_threads ${1});
 
   if [[ ${_threads} > ${2} ]];
   then
