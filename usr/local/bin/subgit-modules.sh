@@ -16,16 +16,17 @@ declare -A _color=(\
 
 function syntax()
 {
-    echo -e "${_color[blue]}Syntax:${_color[reset]} $(basename $0)";
-    echo -e "$(basename $0) list";
-    echo -e "$(basename $0) pull [module-name optional, all if unset]";
-    echo -e "$(basename $0) update [module-name optional, all if unset]";
+    scriptName=$(basename $0);
+    echo -e "${_color[blue]}Syntax:${_color[reset]} ${scriptName}";
+    echo -e "${scriptName} list";
+    echo -e "${scriptName} pull [module-name optional, all if unset]";
+    echo -e "${scriptName} update [module-name optional, all if unset]";
 }
 
 function gitModuleName()
 {
     subgitPath=$(realpath ${1});
-    name=$(basename $(dirname ${subgitPath}));
+    name=$(basename ${subgitPath});
 
     echo -e "${_color[blue]} ${name} ${_color[reset]}";
 }
@@ -54,7 +55,7 @@ function gitStatus()
     else
         for subgit in $(find "${projectRoot}/typo3conf/ext" -type d -name '.git');
         do
-          subgitPath=$(realpath ${subgit});
+          subgitPath=$(dirname $(realpath ${subgit}));
           gitModuleName ${subgitPath}
           gitModuleInfo ${subgitPath};
         done
@@ -63,8 +64,13 @@ function gitStatus()
 
 function gitPull()
 {
-    _pwd=$(pwd);
-    subgitPath=$(dirname $(realpath ${1}));
+    if [[ ! -d ${1} ]];
+    then
+        echo -e "${_color[red]}Error unknown path '${1}'${_color[reset]}";
+        return 1;
+    fi
+
+    subgitPath=$(realpath ${1});
     subgitBranch=$(cd ${subgitPath}; git branch 2>/dev/null | grep '^*' | colrm 1 2);
 
     gitModuleName ${subgitPath};
@@ -95,14 +101,14 @@ function updateModules()
     else
         for subgit in $(find "${projectRoot}/typo3conf/ext" -type d -name '.git');
         do
-          subgitPath=$(dirname $(realpath ${1}));
-          gitPull ${subgit};
+          subgitPath=$(dirname $(realpath ${subgit}));
+          gitPull ${subgitPath};
         done
     fi
 }
 
 case "$1" in
-    status)  gitStatus;;
+    status)  gitStatus "$2";;
     update)  updateModules $2;;
     *)       syntax; exit 1;;
 esac
