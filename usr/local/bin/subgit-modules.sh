@@ -19,7 +19,6 @@ function syntax()
     scriptName=$(basename $0);
     echo -e "${_color[blue]}Syntax:${_color[reset]} ${scriptName}";
     echo -e "${scriptName} status";
-    echo -e "${scriptName} pull [module-name optional, all if unset]";
     echo -e "${scriptName} update [module-name optional, all if unset]";
 }
 
