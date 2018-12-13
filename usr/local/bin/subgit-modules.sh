@@ -64,10 +64,8 @@ function gitStatus()
 function gitPull()
 {
     _pwd=$(pwd);
-    subgitPath=$(realpath ${1});
-    name=$(basename ${subgitPath});
+    subgitPath=$(dirname $(realpath ${1}));
     subgitBranch=$(cd ${subgitPath}; git branch 2>/dev/null | grep '^*' | colrm 1 2);
-    subgitCommitId=$(cd ${subgitPath}; git rev-parse HEAD | head -c 8);
 
     gitModuleName ${subgitPath};
 
@@ -97,7 +95,7 @@ function updateModules()
     else
         for subgit in $(find "${projectRoot}/typo3conf/ext" -type d -name '.git');
         do
-          subgitPath=$(realpath ${subgit});
+          subgitPath=$(dirname $(realpath ${1}));
           gitPull ${subgit};
         done
     fi
