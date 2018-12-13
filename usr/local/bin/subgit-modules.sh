@@ -18,9 +18,22 @@ function syntax()
 {
     scriptName=$(basename $0);
     echo -e "${_color[blue]}Syntax:${_color[reset]} ${scriptName}";
-    echo -e "${scriptName} list";
+    echo -e "${scriptName} status";
     echo -e "${scriptName} pull [module-name optional, all if unset]";
     echo -e "${scriptName} update [module-name optional, all if unset]";
+}
+
+function checkIfGit()
+{
+  if [[ -z "$1" ]];
+  then
+    return 1;
+  elif [[ -d $1/.git ]];
+  then
+    return 1;
+  fi
+
+  return 0;
 }
 
 function gitModuleName()
@@ -107,9 +120,35 @@ function updateModules()
     fi
 }
 
+function gitChangeLog()
+{
+    moduleName=$1;
+
+    if [[ ! -z ${moduleName} ]];
+    then
+        if [[ ! -d ${projectRoot}/typo3conf/ext/${moduleName} ]];
+        then
+            echo -e "${_color[red]}Error unknown sub-git with name ${name}${_color[reset]}";
+            return 1;
+        fi
+
+        gitModuleName ${projectRoot}/typo3conf/ext/${moduleName};
+        cd ${projectRoot}/typo3conf/ext/${moduleName}; git diff --stat --exit-code;
+    else
+        for subgit in $(find "${projectRoot}/typo3conf/ext" -type d -name '.git');
+        do
+          subgitPath=$(dirname $(realpath ${subgit}));
+
+          gitModuleName ${subgitPath};
+          cd ${subgitPath}; git diff --stat --exit-code;
+        done
+    fi
+}
+
 case "$1" in
     status)  gitStatus "$2";;
     update)  updateModules $2;;
+    changes) gitChangeLog $2;;
     *)       syntax; exit 1;;
 esac
 
