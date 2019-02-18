@@ -1,0 +1,52 @@
+#!/bin/bash
+
+#------------------------------------------------------------------------------------------------
+# This is a wrapper for git and use of customer-specific host-prefixes for ~/.ssh/config setup
+#  
+# f.e. GIT-Remote: git@bitbucket.org:my-customer/foo.bar-repository
+# would become:
+#      GIT-Remote: git@my-customer.bitbucket.org:my-customer/foo.bar-repository
+#------------------------------------------------------------------------------------------------
+
+originalRemoteUri='';
+remoteUriIndex=0;
+for arg in "${@}";
+do
+   remoteUriIndex=$((remoteUriIndex + 1));
+   if [[ $(echo $arg | grep -Ec '[a-zA-Z]+\@[a-zA-Z]+\.[a-zA-Z]{2,4}\:') > 0 ]];
+   then
+        originalRemoteUri=$arg;
+        break;
+   fi
+done
+
+if [[ -z ${originalRemoteUri} ]];
+then
+   echo 'Unable to find Remote-URI: skipping over to git-client';
+   git $@;
+   exit $?;
+fi
+
+remoteUser=$(echo ${originalRemoteUri} | grep -Eo '^([^\@]+)');
+remoteUri=$(echo ${originalRemoteUri} | sed -E 's/[^\@]*([^\@\/]+)//' | sed 's/^[\@ ]*//');
+remoteHost=$(echo ${remoteUri} | grep -Eo '^([^\:]+)');
+remotePrefix=$(echo ${remoteUri} | cut -d":" -f 2 | cut -d'/' -f 1);
+remoteRepository=$(echo ${remoteUri} | sed -E 's/^[^\:]+\://');
+
+customRemoteUri="${remoteUser}@${remotePrefix}.${remoteHost}:${remoteRepository}";
+
+#echo "User: ${remoteUser}";
+#echo "Remote: ${remoteUri}";
+#echo "Host: ${remoteHost}";
+#echo "Prefix: ${remotePrefix}"
+#echo "Final: ${customRemoteUri}";
+
+# Apply new RemoteUri to $@ Arguments
+originalRemoteUri[ $remoteUriIndex ]=$customRemoteUri;
+
+#-echo ${remoteUriIndex};
+#-echo ${originalRemoteUri[ $remoteUriIndex ]}
+#-exit;
+
+git $@
+exit $?;
