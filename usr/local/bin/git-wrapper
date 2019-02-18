@@ -12,14 +12,17 @@ _gitBinary=$(which -a git | tail -n 1);
 
 originalRemoteUri='';
 remoteUriIndex=0;
+declare -a args=("$@");
+
 for arg in "${@}";
 do
-   remoteUriIndex=$((remoteUriIndex + 1));
    if [[ $(echo $arg | grep -Ec '[a-zA-Z]+\@[a-zA-Z]+\.[a-zA-Z]{2,4}\:') > 0 ]];
    then
         originalRemoteUri=$arg;
         break;
    fi
+
+   remoteUriIndex=$((remoteUriIndex + 1));
 done
 
 if [[ -z ${originalRemoteUri} ]];
@@ -37,18 +40,18 @@ remoteRepository=$(echo ${remoteUri} | sed -E 's/^[^\:]+\://');
 
 customRemoteUri="${remoteUser}@${remotePrefix}.${remoteHost}:${remoteRepository}";
 
-#echo "User: ${remoteUser}";
-#echo "Remote: ${remoteUri}";
-#echo "Host: ${remoteHost}";
-#echo "Prefix: ${remotePrefix}"
-#echo "Final: ${customRemoteUri}";
+#-echo "User: ${remoteUser}";
+#-echo "Remote: ${remoteUri}";
+#-echo "Host: ${remoteHost}";
+#-echo "Prefix: ${remotePrefix}"
+#-echo "Final: ${customRemoteUri}";
 
 # Apply new RemoteUri to $@ Arguments
-originalRemoteUri[ $remoteUriIndex ]=$customRemoteUri;
+args[ $remoteUriIndex ]=$customRemoteUri;
 
-#-echo ${remoteUriIndex};
-echo "Using ${originalRemoteUri[ $remoteUriIndex ]}";
+#-echo "Index: ${remoteUriIndex}";
+#-echo "New Args: ${args[@]}";
 #-exit;
 
-${_gitBinary} $@
+${_gitBinary} ${args[@]};
 exit $?;
