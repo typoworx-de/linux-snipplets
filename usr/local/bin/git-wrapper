@@ -10,6 +10,11 @@
 
 _gitBinary=$(which -a git | tail -n 1);
 
+if [[ ${1} != 'clone' ]];
+then
+  ${_gitBinary} "$@";
+fi
+
 originalRemoteUri='';
 remoteUriIndex=0;
 declare -a args=("$@");
