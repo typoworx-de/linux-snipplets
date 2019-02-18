@@ -8,6 +8,8 @@
 #      GIT-Remote: git@my-customer.bitbucket.org:my-customer/foo.bar-repository
 #------------------------------------------------------------------------------------------------
 
+_gitBinary=$(which -a git | tail -n 1);
+
 originalRemoteUri='';
 remoteUriIndex=0;
 for arg in "${@}";
@@ -22,8 +24,8 @@ done
 
 if [[ -z ${originalRemoteUri} ]];
 then
-   echo 'Unable to find Remote-URI: skipping over to git-client';
-   git $@;
+   #-echo 'Unable to find Remote-URI: skipping over to git-client';
+   ${_gitBinary} $@;
    exit $?;
 fi
 
@@ -45,8 +47,8 @@ customRemoteUri="${remoteUser}@${remotePrefix}.${remoteHost}:${remoteRepository}
 originalRemoteUri[ $remoteUriIndex ]=$customRemoteUri;
 
 #-echo ${remoteUriIndex};
-#-echo ${originalRemoteUri[ $remoteUriIndex ]}
+echo "Using ${originalRemoteUri[ $remoteUriIndex ]}";
 #-exit;
 
-git $@
+${_gitBinary} $@
 exit $?;
