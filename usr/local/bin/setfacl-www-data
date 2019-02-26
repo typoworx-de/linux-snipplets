@@ -1,0 +1,13 @@
+#/bin/bash
+
+if [ "${EUID}" > 0 ];
+then
+  echo "Please run as root!";
+  exit;
+fi
+
+echo "Adding $SUDO_USER";
+setfacl -Rm g:$SUDO_USER:rwx $@;
+setfacl -Rm g:www-data:rwx $@;
+echo;
+getfacl .;
