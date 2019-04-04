@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [[ -z $@ ]];
+then
+   echo "Syntax: $(basename $0) '[string or regex to grep packages]'";
+   exit 1;
+fi
+
+echo "Searching for packages matching '$1'";
+echo "----------------------------------------";
+dpkg --list | cut -d " " -f 3 | grep -E "${1}";
+echo "----------------------------------------";
+echo;
+read -p "Please confirm reinstall? " -n 1 -r confirm
+if [[ $confirm =~ ^[^yY]$ ]] || [[ -z $confirm ]];
+then
+        echo "Skipping!";
+        exit 1;
+fi
+
+dpkg --list | cut -d " " -f 3 | grep -E "$1" | xargs sudo apt-get -o Dpkg::Options::="--force-overwrite" install --reinstall;
