@@ -18,4 +18,12 @@ then
         exit 1;
 fi
 
+if [[ $EUID -ne 0 ]]; then
+   echo -e "\n\nFor processing this script must be run as root or with sudo";
+   exit 1
+fi
+
+apt-get clean && \
+apt-get autoclean && \
+apt-get update && \
 dpkg --list | cut -d " " -f 3 | grep -E "$1" | xargs sudo apt-get -o Dpkg::Options::="--force-overwrite" install --reinstall;
