@@ -6,6 +6,13 @@
 
 PHP_BINARY=$(which php | head -n1);
 
+if [[ $USER == 'root' ]];
+then
+        echo -e "\e[92mSudo'ing to www-data for security-reasons!\e[0m";
+        sudo -u www-data $0 $@;
+        exit $?;
+fi
+
 if [[ ! -x $(which jq) ]];
 then
         echo "jq binary required!";
