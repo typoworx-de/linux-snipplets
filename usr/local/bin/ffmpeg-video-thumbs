@@ -1,0 +1,30 @@
+#!/bin/bash
+
+if [[ -z $@ ]];
+then
+  echo "Syntax: $(basename $0) [path]";
+  exit 1;
+fi
+
+path="$(realpath $1)";
+snapTime='00:00:10';
+
+for file in ${path}/*; do
+  if [[ $(file -ib "${file}" | grep -E '^video' | wc -l) == 0 ]];
+  then
+    echo "Skipping ${file} (no-video)";
+    continue;
+  fi
+
+  fileName=$(basename "${file}");
+  baseName="${fileName%.*}";
+
+  echo "Processing ${file} ...";
+  if [[ -f "${path}/${baseName}.png" || -s "${path}/${baseName}.png" ]];
+  then
+   echo "> Skipping (thumb exists)";
+  fi
+
+  echo "Processing ${file} ...";
+  ffmpeg -i "${path}/${file}" -ss "${snapTime}.000" -vframes 1 "${path}/${baseName}.png" && echo "> success" || echo "> failed!";
+done
