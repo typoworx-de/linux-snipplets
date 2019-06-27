@@ -8,10 +8,12 @@ case "$network_status" in
   "if-pre-up")
         ip addr flush dev ens160;;
   "if-up")
-        route add ${route1};;
-        route add ${route2}
+        route add ${route1};
+        route add ${route2};
+        ;;
   "if-down")
-        route del ${route1};;
-        route del ${route2};;
+        route del ${route1};
+        route del ${route2};
+        ;;
 #  "if-post-down")
 esac
