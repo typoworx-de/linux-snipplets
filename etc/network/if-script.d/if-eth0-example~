@@ -6,7 +6,8 @@ $route2="-host 123.456.789.100 gw 172.16.0.1";
 
 case "$network_status" in
   "if-pre-up")
-        ip addr flush dev ens160;;
+        ip addr flush dev ens160;
+        ;;
   "if-up")
         route add ${route1};
         route add ${route2};
