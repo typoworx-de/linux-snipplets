@@ -1,0 +1,17 @@
+#!/bin/bash
+source $(dirname $(realpath $0))/if-script.inc.sh;
+
+$route1="-net 172.16.0.0/16 gw 172.16.0.1 metric 20"
+$route2="-host 123.456.789.100 gw 172.16.0.1";
+
+case "$network_status" in
+  "if-pre-up")
+        ip addr flush dev ens160;;
+  "if-up")
+        route add ${route1};;
+        route add ${route2}
+  "if-down")
+        route del ${route1};;
+        route del ${route2};;
+#  "if-post-down")
+esac
