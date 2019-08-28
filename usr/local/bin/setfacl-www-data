@@ -8,6 +8,15 @@ then
   exit 1;
 fi
 
+# Security check to avoid any blown system-permissions!
+# Avoid f.e. incidently manipulation /usr/{bin,sbin}
+if [[ ! " ${1}" =~ (^| )${_permitted_dirs[@]}.*?( |$) ]];
+then
+  echo -e "\e[91mERROR: The given path does not match the safe permissions-policy!\e[0m";
+  echo "Path: ${1}";
+  exit 1;
+fi
+
 if [ "$(id -u)" != 0 ];
 then
   echo "Please run as root!";
