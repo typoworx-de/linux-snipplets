@@ -1,4 +1,12 @@
-#/bin/bash
+#!/bin/bash
+
+if [[ -z $@ ]];
+then
+  echo "Syntax: $(dirname $0) [path] (optional arguments)";
+  echo -e "\t-q\tEnable quiet mode";
+  echo;
+  exit 1;
+fi
 
 if [ "$(id -u)" != 0 ];
 then
@@ -9,5 +17,10 @@ fi
 echo "Adding $SUDO_USER";
 setfacl -Rm g:$SUDO_USER:rwx $@;
 setfacl -Rm g:www-data:rwx $@;
-echo;
-getfacl .;
+
+if [[ $@ != *"-q"* ]];
+then
+  echo;
+  getfacl ${1};
+fi
+
