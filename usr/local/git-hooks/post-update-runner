@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-_git_root=$(realpath $(dirname $0)/../../);
-_git_hooks_dir=$(dirname $0);
+source $(dirname $(realpath $0))/.hook.inc.sh;
 _git_hooks_filter='\.post-update';
 
 run-parts --report ${_git_hooks_dir} --regex=${_git_hooks_filter};
