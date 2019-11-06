@@ -23,21 +23,26 @@ then
         _WORKDIR="${1}";
   else
         _WORKDIR=$(pwd);
-        _CMD="${1}";
+        _CMD="${@}";
   fi
 else
-        _WORKDIR=$(test -z "$1" && `pwd` || echo "${1}");
-        _CMD=${@: 2};
+  if [[ -d "${1}" ]];
+  then
+        _WORKDIR="${1}";
+        _CMD="${@: 2}";
+  else
+        _WORKDIR=$(pwd);
+        _CMD="${@}";
+  fi
 fi
 
 if [[ ! -z "${_WORKDIR}" ]];
 then
-        #_DIRUSER=$(stat -c '%U' $_WORKDIR);
         _WORKDIR=$(realpath "${_WORKDIR}");
         _DIRUSER=$(stat -c '%G' "${_WORKDIR}");
 else
         echo "Error: No Workdir given!"
-        exit;
+        exit 1;
 fi
 
 if [[ -z $_CMD ]];
@@ -45,9 +50,19 @@ then
         _CMD=$SHELL;
 fi
 
+read -r -a cmd <<< "${_CMD}";
+
+_CMD=${cmd[0]};
+_ARGS='';
+
+if [[ ${#cmd[@]} > 1 ]];
+then
+        _ARGS="'${cmd[@]: 1}'";
+fi
+
 if [[ ! -z "${_DIRUSER}" ]] && [[ "${_DIRUSER}" != "$USER" ]];
 then
-        sudo su ${_DIRUSER} - -c $_CMD;
+        sudo su ${_DIRUSER} - -c "${_CMD} ${_ARGS}";
 else
         $_CMD;
 fi
