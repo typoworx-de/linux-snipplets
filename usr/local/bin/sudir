@@ -1,27 +1,40 @@
 #!/bin/bash
+_WORKDIR='';
+_DIRUSER='';
+_CMD='';
+
+usage()
+{
+  echo "-- Syntax --";
+  echo "Sudir is like 'sudo' by automatically using the given directory-owner, like this:"
+  echo -e "$> sudir [Path] [command / arguments]\n";
+  exit 1;
+}
+
 if [[ -z $@ ]];
 then
-        echo "-- Syntax --";
-        echo "Sudir is like 'sudo' by automatically using the given directory-owner, like this:"
-        echo -e "$> sudir [Path] [command / arguments]\n";
-        exit;
+  usage;
 fi
 
-# Detect if already sudo'ed as root.
-# else sudo to allow sudoers.d without explicit sudo/password
-if [[ $USER != "root" ]];
+if [[ ${#} == 1 ]];
 then
-        sudo $0 $@;
-        exit;
+  if [[ -d "${1}" ]];
+  then
+        _WORKDIR="${1}";
+  else
+        _WORKDIR=$(pwd);
+        _CMD="${1}";
+  fi
+else
+        _WORKDIR=$(test -z "$1" && `pwd` || echo "${1}");
+        _CMD=${@: 2};
 fi
 
-_WORKDIR=$(test -z "$1" && `pwd` || echo ${1});
-_DIRUSER="";
-_CMD=${@: 2};
-
-if [[ ! -z "$_WORKDIR" ]];
+if [[ ! -z "${_WORKDIR}" ]];
 then
-        _DIRUSER=$(stat -c '%U' $_WORKDIR);
+        #_DIRUSER=$(stat -c '%U' $_WORKDIR);
+        _WORKDIR=$(realpath "${_WORKDIR}");
+        _DIRUSER=$(stat -c '%G' "${_WORKDIR}");
 else
         echo "Error: No Workdir given!"
         exit;
@@ -29,16 +42,12 @@ fi
 
 if [[ -z $_CMD ]];
 then
-        _CMD=`which bash`;
-else
-        _CMD="su -c ${_CMD}";
+        _CMD=$SHELL;
 fi
 
-if [[ ! -z $_WORKDIR ]] && [[ ! -z $_DIRUSER ]];
+if [[ ! -z "${_DIRUSER}" ]] && [[ "${_DIRUSER}" != "$USER" ]];
 then
-        echo "SU to '$_DIRUSER'";
-        sudo -H -u ${_DIRUSER} $_CMD;
+        sudo su ${_DIRUSER} - -c $_CMD;
 else
-        echo "Error: Cannot determine Dir-User for '$_WORKDIR'";
-        exit;
+        $_CMD;
 fi
