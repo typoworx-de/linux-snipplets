@@ -2,7 +2,8 @@
 
 declare -A blockFiles=(
   [ssh]=~/.ssh/config
-  [ssh.default]=~/.ssh/config.default
+  [ssh.head]=~/.ssh/config.head
+  [ssh.tail]=~/.ssh/config.tail
 );
 
 declare -A config=(
@@ -44,6 +45,22 @@ then
   }
 fi
 
+function importFile
+{
+  # Check if default-file exists
+  if [ ! -z "${1}" ] && [ -f "${1}" ];
+  then
+    import="\n\n#--[ ${1} ]--\n";
+    import+=$(cat ${1});
+    import+="\n\n#--[ end file-import ]--\n\n";
+    echo "${import}";
+
+    return 0;
+  fi
+
+  return 1;
+}
+
 host='';
 target='';
 declare -A blocks;
@@ -64,15 +81,8 @@ do
     # Check if we need to initialize config-block
     if [[ -z "${blocks[${target}]}" ]];
     then
-      # Check if default-file exists to prepend
-      if [ ! -z "${blocks[${target}]}.default" ] && [ -f ${blocks[${target}.default]} ];
-      then
-	blocks[${target}]="#--[ ${blockFiles[${target}.default]} ]--\n";
-	blocks[${target}]+=$(cat ${blockFiles[${target}.default]});
-        blocks[${target}]+="\n\n";
-      else
-	blocks[${target}]="";
-      fi
+      blocks[${target}]="";
+      blocks[${target}]+=$(importFile "${blockFiles[${target}]}.head");
 
       blocks[${target}]+="Host ${hostname}\n";
     fi
@@ -107,6 +117,9 @@ do
     continue;
   }
 
+  # Check if append-file exists
+  blocks[${identifier}]+=$(importFile "${blockFiles[${identifier}]}.tail");
+
   targetFile="${blockFiles[${identifier}]}";
 
   backupFile="${targetFile}~bak";
@@ -126,9 +139,9 @@ do
   }
 
   echo -e "${ansiText[blue]}Writing ${identifier}-config into ${blockFiles[${identifier}]}${ansiText[reset]}";
-  echo -e "${blocks[${identifier}]}"
-done
 
-#echo;
-#echo "Result Blocks";
-#echo -e "${blocks[@]}";
+  fileBuffer=$(echo -e "${blocks[${identifier}]}");
+
+  # Write into tmp-file cleaning up leading white-space
+  echo -e "${fileBuffer#"${fileBuffer%%[![:space:]]*}"}" > ${targetFile}~;
+done
