@@ -1,0 +1,134 @@
+#!/bin/bash
+
+declare -A blockFiles=(
+  [ssh]=~/.ssh/config
+  [ssh.default]=~/.ssh/config.default
+);
+
+declare -A config=(
+  [backupCount]=5
+);
+
+#---------------------------------------------------
+
+declare -A ansiText=(
+  [red]=\\e[31m
+  [green]=\\e[32m
+  [blue]=\\e[34m
+  [yellow]=\\e[33m
+  [reset]=\\e[39m
+);
+
+gitPath=$(git rev-parse --show-toplevel 2> /dev/null);
+
+if [[ $EUID -eq 0 ]];
+then
+  if [ "$EUID" == "$UID" ]
+  then
+    echo -e "${ansiText[red]}Please do *NOT* run this as root!${ansiText[reset]}\n";
+    exit 1;
+  fi
+fi
+
+if [ -z "${gitPath}" ] || [ ! -d "${gitPath}/.git" ];
+then
+  echo -e "${ansiText[red]}This path does not look like a valid GIT-Repository!\n";
+  exit 1;
+fi
+
+if [[ -f ~/.git/hosts ]];
+then
+  test -d ~/.git || {
+    mkdir ~/.git;
+    touch ~/.git/hosts;
+  }
+fi
+
+host='';
+target='';
+declare -A blocks;
+
+while IFS= read line
+do
+  [[ "${line}" = \#* ]] && continue;
+  if [[ "${line}" =~ ^Host\ .+ ]];
+  then
+    hostname=${line//Host /};
+  fi
+
+  if [[ "${line}" =~ ^[[:space:]]*ssh\. ]];
+  then
+    target='ssh';
+    line=${line//ssh./}
+
+    # Check if we need to initialize config-block
+    if [[ -z "${blocks[${target}]}" ]];
+    then
+      # Check if default-file exists to prepend
+      if [ ! -z "${blocks[${target}]}.default" ] && [ -f ${blocks[${target}.default]} ];
+      then
+	blocks[${target}]="#--[ ${blockFiles[${target}.default]} ]--\n";
+	blocks[${target}]+=$(cat ${blockFiles[${target}.default]});
+        blocks[${target}]+="\n\n";
+      else
+	blocks[${target}]="";
+      fi
+
+      blocks[${target}]+="Host ${hostname}\n";
+    fi
+  elif [[ "${line}" =~ ^[[:space:]]*git\. ]];
+  then
+    target='git';
+    line=${line//git./}
+  fi
+
+  [[ -z "${target}" ]] && continue;
+
+  # Clean-Up Whitespace to preserve clean-formattings
+  line=$(echo "${line}" | xargs);
+
+  if [ "${target}" == 'git' ] && [[ "${line}" =~ ^config\. ]];
+  then
+    # explode string to array
+    lineArgs=( ${line//config\./} );
+
+    # execute GIT-Command with line splitted into config-setting and quoted argument (last element)
+    echo git config "${lineArgs[@]:0:$((${#lineArgs[@]}-1))} \"${lineArgs[${#lineArgs[@]}-1]}\"";
+  else
+    # Write to buffer
+    blocks[${target}]+="\t${line}\n";
+  fi
+done < ~/.git/hosts
+
+for identifier in "${!blocks[@]}"
+do
+  [ -z "${blockFiles[${identifier}]}" ] && {
+    echo -e "${ansiText[yellow]}Unknown block/identifier, Skipping!${ansiText[reset]}";
+    continue;
+  }
+
+  targetFile="${blockFiles[${identifier}]}";
+
+  backupFile="${targetFile}~bak";
+  backupCount=$(ls -f "${targetFile}"* | wc -l);
+  if [[ "${backupCount}" -gt "${config[backupCount]}" ]];
+  then
+    # Purge/Rotate old backup-files
+    echo -e "${ansiText[yellow]}Purging old backup-files.${ansiText[reset]}";
+    rm $(ls -v1 "${backupFile}."* | head -n1);
+  fi
+
+  backupFile+="."$(date +"%Y%m%d-%H%M%S");
+  echo -e "Creating backup file ${backupFile}";
+  cp "${targetFile}" "${backupFile}" || {
+    echo -e "${ansiText[red]}Error: Failed creating backup for ${targetFile}! Skipping update!${ansiText[reset]}";
+    continue;
+  }
+
+  echo -e "${ansiText[blue]}Writing ${identifier}-config into ${blockFiles[${identifier}]}${ansiText[reset]}";
+  echo -e "${blocks[${identifier}]}"
+done
+
+#echo;
+#echo "Result Blocks";
+#echo -e "${blocks[@]}";
