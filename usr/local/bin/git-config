@@ -1,5 +1,18 @@
 #!/bin/bash
 
+#
+# Example: ~/.git/hosts
+#
+# Host my-customer.bitbucket.org
+# ssh:
+#         HostName bitbucket.org
+#         PreferredAuthentications publickey
+#         IdentityFile /home/gabriel/.ssh/id_rsa
+# git:
+#         config.user.name  "gkaufmann"
+#         config.user.email "info@typoworx.com"
+#
+
 declare -A blockFiles=(
   [ssh]=~/.ssh/config
   [ssh.head]=~/.ssh/config.head
