@@ -1,17 +1,7 @@
 #!/bin/bash
-
-#
-# Automatically detect desired PHP-Version by composer.json and try to match it with system provided PHP-Binary
-#
-
 PHP_BINARY=$(which php | head -n1);
 
-if [[ $USER == 'root' ]];
-then
-        echo -e "\e[92mSudo'ing to www-data for security-reasons!\e[0m";
-        sudo -u www-data $0 $@;
-        exit $?;
-fi
+echo;
 
 if [[ ! -x $(which jq) ]];
 then
@@ -22,7 +12,12 @@ fi
 if [[ -r composer.json ]];
 then
         echo "Determining PHP-Version from composer.json";
-        COMPOSER_PHP_VERSION=$(jq -r '[.require.php|tostring]' composer.json | grep -Eo "[0-9\.]+");
+        COMPOSER_PHP_VERSION=$(jq -r '[.platform.php|tostring]' composer.json | grep -Eo "[0-9\.]+");
+
+        if [[ -z "$COMPOSER_PHP_VERSION" ]];
+        then
+                COMPOSER_PHP_VERSION=$(jq -r '[.require.php|tostring]' composer.json | grep -Eo "[0-9\.]+");
+        fi
         COMPOSER_PHP_VERSION_ARRAY=( ${COMPOSER_PHP_VERSION//./ } )
 
         DESIRED_MAJOR_VERSION=${COMPOSER_PHP_VERSION_ARRAY[0]}.${COMPOSER_PHP_VERSION_ARRAY[1]};
