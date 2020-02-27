@@ -1,0 +1,35 @@
+#!/bin/bash
+
+if [[ $UID -ne 0 ]];
+then
+  echo "Root permissions required!";
+  exit 1;
+fi
+
+base=$(basename $0);
+phpVersion=${base//[!0-9\.]/};
+phpLibPath=$(php${phpVersion} -i | grep extension_dir | cut -d '>' -f 2 | cut -d '=' -f 1);
+
+if [[ -z "${phpVersion}" ]];
+then
+  echo "Error unable to determine PHP-Version for PECL";
+  exit 1;
+fi
+
+if [[ -z "${phpLibPath}" ]];
+then
+  echo "Error unable to determine php extension path /usr/lib/php/????";
+  exit 1;
+fi
+
+sudo pecl config-set php_ini "/etc/php/${phpVersion}/cli/php.ini" > /dev/null && \
+sudo pecl config-set ext_dir "${phpLibPath}" > /dev/null && \
+#sudo pecl config-set bin_dir "/usr/bin/" > /dev/null && \
+sudo pecl config-set php_bin "/usr/bin/php${phpVersion}/" > /dev/null && \
+sudo pecl config-set php_suffix "${phpVersion}/" > /dev/null || {
+  echo "Error preparing pecl-config for php-${phpVersion}";
+  exit 1;
+}
+
+pecl $@
+exit $?
