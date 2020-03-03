@@ -1,0 +1,83 @@
+#!/bin/bash
+
+#declare -a phpVersions=( 7.4 );
+
+_path=$(pwd);
+
+release='';
+basename=$(basename $(pwd));
+package="php-${basename}";
+
+function build()
+{
+  package="${1}";
+  release="${2}";
+  phpVersion="${3}";
+
+  phpLibPath=$(php${phpVersion} -i | grep extension_dir | cut -d '>' -f 2 | cut -d '=' -f 1 | tr -d '[:space:]');
+
+  if [[ -f "${phpLibPath}/${basename}.so" ]];
+  then
+    echo "PHP-Module seems to be already installed (${phpLibPath}/${basename}.so)";
+    echo "Skipping!";
+    return 0;
+  fi
+
+  if [[ ! -d "${phpLibPath}" ]];
+  then
+    echo "Invalid PHP-Extension path: ${phpLibPath}";
+    exit 1;
+  fi
+
+  if [[ -d "${_path}/.git" ]];
+  then
+    release=$(git tag | tail -n 1);
+
+    git reset --hard && \
+    git checkout ${release} || {
+      echo "GIT Release update failed"; exit 1;
+    }
+  fi
+
+  packageName="php${phpVersion}-${package}";
+
+  phpize${phpVersion} && \
+  ./configure || { echo "Configure failed!"; exit 1; } && \
+  make -j 4 || { echo "Make failed!"; exit 1; } && {
+    if [[ ! -f "${_path}/modules/${basename}.so" ]];
+    then
+      echo "Error cannot determine PHP-Extension library to install (tried: ${_path}/modules/${basename}.so)";
+      exit 1;
+    fi
+
+    echo "Installing: cp ${_path}/modules/${basename}.so ${phpLibPath}/${basename}.so";
+    sudo cp ${_path}/modules/${basename}.so ${phpLibPath}/${basename}.so;
+  }
+}
+
+function checkinstall()
+{
+  checkinstall \
+    --pkgname="${packageName}" \
+    --pkgrelease="${release}" \
+    --pkgsource="GIT release ${release}" \
+    --provides="${packageName}" \
+    --replaces="${packageName}" \
+    --nodoc \
+    --strip=yes \
+    --stripso=yes \
+    --deldoc=yes \
+    --deldesc=yes \
+    --delspec=yes \
+    $@ \
+  ;
+
+  exit $?;
+}
+
+build "${package}" "${release}" "${1}";
+
+#for phpVersion in "${phpVersions[@]}"
+#do
+#  build "${package}" "${release}" "${phpVersions}";
+#done
