@@ -8,6 +8,13 @@ then
   source ~/.clean-waist-etc.conf
 fi
 
+if [[ $@ =~ '--dry-run' ]];
+then
+  echo "--------------------------";
+  echo " Running in dry-run mode!";
+  echo "--------------------------";
+fi
+
 for dir in $(find /etc/ -maxdepth 1 -mindepth 1 -type d);
 do
   echo -e "\x0D\x1B[2KScanning directory ${dir}\c";
@@ -40,10 +47,19 @@ else
   for i in ${obsoleteDirs[@]}; do echo $i; done
   echo;
 
+  if [[ $@ =~ '--dry-run' ]];
+  then
+    echo "Running in dry-run mode. Skipping real actions!";
+    exit 0;
+  fi
+
   sudo tar cvjf /backup/etc-clean-waist-$(date +%d%m%Y-%H%M).tar.bz2 -C ${obsoleteDirs[@]} && {
     echo -e "\n--------------------------------------\nBackup of waist files complete!\n";
     echo -e "Deleting obsolete files ...";
-    echo "rm ${obsoleteDirs[@]}";
+    sudo safe-rm -rf "${obsoleteDirs[@]}" || {
+      echo "Pruning obsolete Files FAILED!";
+      exit 1;
+    };
   } || {
     echo "Backup of waist files FAILED!";
     exit 1;
