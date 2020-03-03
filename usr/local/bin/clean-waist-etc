@@ -1,0 +1,41 @@
+#!/bin/bash
+
+declare -a obsoleteDirs;
+declare -a excludeDirs=( ".git" "-disabled" );
+
+for dir in $(find /etc/ -maxdepth 1 -type d);
+do
+  echo -e "\x0D\x1B[2KScanning directory ${dir}\c";
+
+  if [[ "${dir}" =~ "~" ]];
+  then
+    echo "-> Excluding";
+    continue;
+  fi
+
+  for exclude in "${excludeDirs[@]}";
+  do
+    if [[ "${dir}" =~ "${exclude}" ]];
+    then
+      echo "-> Excluding";
+      continue;
+    fi
+  done
+
+  if ! dpkg -S "${dir}" 1>2 2>/dev/null;
+  then
+    obsoleteDirs+=( "${dir}" )
+  fi
+done
+
+if [[ "${#obsoleteDirs[@]}" == 0 ]];
+then
+  echo -e "\nNothing found!\n";
+else
+  sudo tar cvjf /backup/etc-clean-waist-$(date +%d%m%Y-%H%M).tar.bz2 ${obsoleteDirs[@]} && {
+    echo "Backup of waist files complete!";
+  } || {
+    echo "Backup of waist files FAILED!";
+    exit 1;
+  }
+fi
