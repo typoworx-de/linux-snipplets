@@ -6,6 +6,7 @@ _path=$(pwd);
 
 release='';
 basename=$(basename $(pwd));
+basename=${basename//[^a-zA-Z0-9]*/}
 package="php-${basename}";
 
 function build()
@@ -44,14 +45,17 @@ function build()
   phpize${phpVersion} && \
   ./configure || { echo "Configure failed!"; exit 1; } && \
   make -j 4 || { echo "Make failed!"; exit 1; } && {
-    if [[ ! -f "${_path}/modules/${basename}.so" ]];
+    #if [[ ! -f "${_path}/modules/${basename}*.so" ]];
+    if ls "${_path}/modules/${basename}*.so" 1> /dev/null 2>&1;
     then
       echo "Error cannot determine PHP-Extension library to install (tried: ${_path}/modules/${basename}.so)";
       exit 1;
     fi
 
-    echo "Installing: cp ${_path}/modules/${basename}.so ${phpLibPath}/${basename}.so";
-    sudo cp ${_path}/modules/${basename}.so ${phpLibPath}/${basename}.so;
+    echo "Installing ... cp ${_path}/modules/${basename}*.so ${phpLibPath}/${basename}.so";
+    sudo cp ${_path}/modules/${basename}*.so ${phpLibPath}/${basename}.so;
+
+    make clean;
   }
 }
 
