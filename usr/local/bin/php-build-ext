@@ -63,8 +63,7 @@ function build()
     echo "Testing ..."
     echo "extension=${basename}.so" | sudo tee /etc/php/${phpVersion}/mods-available/${basename}.ini;
     echo
-$(php7.3 -m | grep -c "PHP Startup: ${basename}: Unable to initialize module") == 0
-    if [[ $(php7.3 -m | grep -c "PHP Startup: ${basename}: Unable to initialize module") == 0 ]];
+    if [[ $(php7.3 -m | grep -c "PHP Startup: ${basename}") -eq 0 ]];
     then
       echo "Something went wrong! Disabling PHP-Module.";
       echo ";extension=${basename}.so" | sudo tee /etc/php/${phpVersion}/mods-available/${basename}.ini;
