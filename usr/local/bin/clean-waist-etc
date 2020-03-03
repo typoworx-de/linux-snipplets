@@ -1,9 +1,14 @@
 #!/bin/bash
 
 declare -a obsoleteDirs;
-declare -a excludeDirs=( ".git" "-disabled" );
+declare -a excludeDirs=( ".git" "-disabled" "sysctl.d-disabled" "docker");
 
-for dir in $(find /etc/ -maxdepth 1 -type d);
+if [[ -f ~/.clean-waist-etc.conf ]];
+then
+  source ~/.clean-waist-etc.conf
+fi
+
+for dir in $(find /etc/ -maxdepth 1 -mindepth 1 -type d);
 do
   echo -e "\x0D\x1B[2KScanning directory ${dir}\c";
 
@@ -15,7 +20,7 @@ do
 
   for exclude in "${excludeDirs[@]}";
   do
-    if [[ "${dir}" =~ "${exclude}" ]];
+    if [[ "${dir}" =~ "${exclude}" || "${dir}" = *"${exclude}"* ]];
     then
       echo "-> Excluding";
       continue;
@@ -32,8 +37,13 @@ if [[ "${#obsoleteDirs[@]}" == 0 ]];
 then
   echo -e "\nNothing found!\n";
 else
-  sudo tar cvjf /backup/etc-clean-waist-$(date +%d%m%Y-%H%M).tar.bz2 ${obsoleteDirs[@]} && {
-    echo "Backup of waist files complete!";
+  for i in ${obsoleteDirs[@]}; do echo $i; done
+  echo;
+
+  sudo tar cvjf /backup/etc-clean-waist-$(date +%d%m%Y-%H%M).tar.bz2 -C ${obsoleteDirs[@]} && {
+    echo -e "\n--------------------------------------\nBackup of waist files complete!\n";
+    echo -e "Deleting obsolete files ...";
+    echo "rm ${obsoleteDirs[@]}";
   } || {
     echo "Backup of waist files FAILED!";
     exit 1;
