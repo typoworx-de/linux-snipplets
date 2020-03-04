@@ -1,0 +1,31 @@
+#!/bin/bash
+
+declare -i ID
+declare -i STATE
+
+#
+# Search all TouchPad devices if there are more than one
+# Attention may be some kind of exclude-list may be required (is on my ToDo)
+#
+
+for DEVICE in $(xinput list | grep -Eio 'TouchPad\s*id\=[0-9]{1,2}');
+do
+  ID=$(echo $DEVICE | grep -Eo '[0-9]{1,2}');
+  STATE=$(xinput list-props $ID|grep 'Device Enabled'|awk '{print $4}');
+
+  if [ $STATE -eq 1 ]
+  then
+    xinput disable $ID
+    xinput set-prop $ID "Device Enabled" 0
+  else
+    xinput enable $ID
+    xinput set-prop $ID "Device Enabled" 1
+  fi
+done
+
+if [ $STATE -eq 1 ]
+then
+  echo "Touchpad disabled."
+else
+  echo "Touchpad enabled."
+fi
