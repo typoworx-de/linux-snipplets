@@ -1,0 +1,17 @@
+#!/bin/bash
+
+_archive="$1";
+
+if [[ ! -f "${_archive}" ]];
+then
+  echo "File not found '${_archive}'!";
+  exit 1;
+fi
+
+if [[ ! $(file "${_archive}") = *'bzip2 compressed data'* ]];
+then
+  echo "This doesn't look like bz2 archive!";
+  exit 1;
+fi
+
+cat "${_archive}" | bzip2 -d --stdout
