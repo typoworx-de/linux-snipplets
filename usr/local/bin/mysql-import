@@ -1,0 +1,14 @@
+#!/bin/bash
+
+sqlBegin=$(mktemp);
+cat << EOF > "${sqlBegin}"
+SET autocommit=0;
+EOF
+
+sqlEnd=$(mktemp);
+cat << EOF > "${sqlEnd}"
+COMMIT; SET autocommit=1;
+EOF
+
+cat ${sqlBegin} - ${sqlEnd} | pv | mysql $@;
+rm ${sqlBegin} ${sqlEnd};
