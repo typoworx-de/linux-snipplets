@@ -3,12 +3,18 @@
 sqlBegin=$(mktemp);
 cat << EOF > "${sqlBegin}"
 SET autocommit=0;
+SET unique_checks=0;
+SET foreign_key_checks=0;
+SET autocommit=0;
 EOF
 
 sqlEnd=$(mktemp);
 cat << EOF > "${sqlEnd}"
-COMMIT; SET autocommit=1;
+COMMIT;
+SET autocommit=1;
+SET unique_checks=1;
+SET foreign_key_checks=1;
 EOF
 
-cat ${sqlBegin} - ${sqlEnd} | pv | mysql $@;
+cat ${sqlBegin} - ${sqlEnd} | pv | mysql --max_allowed_packet=256M $@;
 rm ${sqlBegin} ${sqlEnd};
