@@ -1,0 +1,87 @@
+#!/bin/bash
+rootPath='/etc/ssl/self-signed';
+caPath="${rootPath}/ca";
+caName='intranet-server';
+
+certPath="${rootPath}/certs";
+
+crtSubject='/C=DE/ST=NDS/L=Braunschweig/O=TYPOworx GmbH/CN=intranet.typoworx.de';
+
+if [[ -z "$@" ]];
+then
+  echo "Syntax: $(basename $0) [ Key-Idenitty-Name ]";
+fi
+
+test -d "${caPath}" || mkdir -p "${caPath}";
+test -d "${certPath}" || mkdir -p "${certPath}";
+touch "${caPath}/index.db";
+touch "${caPath}/rand.db";
+echo 1001 > "${caPath}/serial.db";
+
+
+# Configuration
+cat>${caPath}/openssl_ca.conf<<'EOF'
+[ ca ]
+default_ca = ca_default
+
+[ ca_default ]
+dir = {%rootPath}
+certs = $dir
+new_certs_dir = $dir/certs
+database = $dir/ca/index.db
+serial = $dir/ca/serial.db
+RANDFILE = $dir/ca/rand.db
+certificate = $dir/ca/{%caName}.crt
+private_key = $dir/ca/{%caName}.key
+default_days = 365
+default_crl_days = 30
+default_md = md5
+preserve = no
+policy = generic_policy
+[ generic_policy ]
+countryName = optional
+stateOrProvinceName = optional
+localityName = optional
+organizationName = optional
+organizationalUnitName = optional
+commonName = supplied
+emailAddress = optional
+EOF
+
+sed -i "s|{%rootPath}|${rootPath}|" "${caPath}/openssl_ca.conf";
+sed -i "s|{%caName}|${caName}|" "${caPath}/openssl_ca.conf";
+
+
+if [[ ! -f "${caPath}/${caName}.csr" ]];
+then
+  echo "Creating CA Certificates";
+  openssl req -new > "${caPath}/${caName}.cert.csr"  -subj "${crtSubject}" || { echo "Error 'openssl req -new'!"; exit 1; } && \
+  openssl rsa -in privkey.pem -out "${caPath}/${caName}.cert.key" || { echo "Error 'openssl rsa'!"; exit 1; } && \
+  openssl x509 -in "${caPath}/${caName}.cert.csr" -out "${caPath}/${caName}.cert.crt"  -req -signkey "${caPath}/${caName}.cert.key" -days 3650 || { echo "Error 'openssl x509'!"; exit 1; } && {
+    echo "Created CA Certificate '${caPath}/${caName}.csr'";
+    echo;
+  } || {
+    echo "Error creating CA Certificate '${caPath}/${caName}.csr'!";
+    rm  "${caPath}/*";
+    exit 1;
+  }
+fi
+
+
+echo "Creating User-Identity Cert '${identityFullName}'";
+
+identityFullName="${1}";
+identity=$(echo ${1/ /_} | tr '[:upper:]' '[:lower:]');
+
+openssl genrsa -des3 -out "${certPath}/${identity}.key" || { echo "Error 'openssl genrsa'!"; exit 1; } && \
+openssl req -new -key "${certPath}/${identity}.key" -out "${certPath}/${identity}.req" -subj "${crtSubject}" || { echo "Error 'openssl req'!"; exit 1; } && \
+openssl ca -config "${caPath}/openssl_ca.conf" -cert "${caPath}/${caName}.cert.crt" -keyfile "${caPath}/${caName}.cert.key" -out "${certPath}/${identity}.crt" -in "${certPath}/${identity}.req" || { echo "$
+openssl pkcs12 -export -inkey "${certPath}/${identity}.key" -name "${identityFullName}" -in "${certPath}/${identity}.crt" -certfile "${caPath}/${caName}.cert.crt" -out "${certPath}/${identity}.p12" || \
+{ echo "Error 'openssl pkcs12'!"; exit 1; } \
+&& \
+{
+  echo "Done";
+} || {
+  echo "Error creating cert!";
+  exit 1;
+}
