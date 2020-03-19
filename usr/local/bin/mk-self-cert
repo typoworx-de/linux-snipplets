@@ -1,11 +1,20 @@
-#!/bin/bash
 rootPath='/etc/ssl/self-signed';
-caPath="${rootPath}/ca";
+
+caDir='ca';
+caPath="${rootPath}/${caDir}";
 caName='intranet-server';
 
-certPath="${rootPath}/certs";
+certDir='certs';
+certPath="${rootPath}/${certDir}";
 
-crtSubject='/C=DE/ST=NDS/L=Braunschweig/O=TYPOworx GmbH/CN=intranet.typoworx.de';
+subjCountry='DE';
+subjRegion='NDS';
+subjCity='Braunschweig';
+subjOrg='TYPOworx GmbH';
+subjCn='intranet.typoworx.de';
+
+crtSubject="/C=${subjCountry}/ST=${subjRegion}/L=${subjCity}/O=${subjOrg}/CN=${subjCn}";
+
 
 if [[ -z "$@" ]];
 then
@@ -27,10 +36,10 @@ default_ca = ca_default
 [ ca_default ]
 dir = {%rootPath}
 certs = $dir
-new_certs_dir = $dir/certs
-database = $dir/ca/index.db
-serial = $dir/ca/serial.db
-RANDFILE = $dir/ca/rand.db
+new_certs_dir = $dir/{%certDir}
+database = $dir/{%caDir}/index.db
+serial = $dir/{%caDir}/serial.db
+RANDFILE = $dir/{%caDir}/rand.db
 certificate = $dir/ca/{%caName}.crt
 private_key = $dir/ca/{%caName}.key
 default_days = 365
@@ -48,7 +57,10 @@ commonName = supplied
 emailAddress = optional
 EOF
 
+# Replace some Place-Holders
 sed -i "s|{%rootPath}|${rootPath}|" "${caPath}/openssl_ca.conf";
+sed -i "s|{%caDir}|${caDir}|" "${caPath}/openssl_ca.conf";
+sed -i "s|{%certDir}|${certDir}|" "${caPath}/openssl_ca.conf";
 sed -i "s|{%caName}|${caName}|" "${caPath}/openssl_ca.conf";
 
 
