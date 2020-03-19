@@ -1,3 +1,4 @@
+#!/bin/bash
 rootPath='/etc/ssl/self-signed';
 
 caDir='ca';
@@ -23,9 +24,11 @@ fi
 
 test -d "${caPath}" || mkdir -p "${caPath}";
 test -d "${certPath}" || mkdir -p "${certPath}";
+
 touch "${caPath}/index.db";
 touch "${caPath}/rand.db";
 touch "${caPath}/serial.db";
+
 
 
 # Configuration
@@ -47,6 +50,7 @@ default_crl_days = 30
 default_md = md5
 preserve = no
 policy = generic_policy
+
 [ generic_policy ]
 countryName = optional
 stateOrProvinceName = optional
@@ -55,6 +59,10 @@ organizationName = optional
 organizationalUnitName = optional
 commonName = supplied
 emailAddress = optional
+
+[ alt_names ]
+DNS.1 = {%subjCn}
+DNS.2 = www.{%subjCn}
 EOF
 
 # Replace some Place-Holders
@@ -62,12 +70,13 @@ sed -i "s|{%rootPath}|${rootPath}|" "${caPath}/openssl_ca.conf";
 sed -i "s|{%caDir}|${caDir}|" "${caPath}/openssl_ca.conf";
 sed -i "s|{%certDir}|${certDir}|" "${caPath}/openssl_ca.conf";
 sed -i "s|{%caName}|${caName}|" "${caPath}/openssl_ca.conf";
+sed -i "s|{%subjCn}|${subjCn}|" "${caPath}/openssl_ca.conf";
 
 
-if [[ ! -f "${caPath}/${caName}.csr" ]];
+if [[ ! -f "${caPath}/${caName}.cert.csr" ]];
 then
   echo "Creating CA Certificates";
-  
+
   echo 1001 > "${caPath}/serial.db";
   openssl req -new > "${caPath}/${caName}.cert.csr"  -subj "${crtSubject}" || { echo "Error 'openssl req -new'!"; exit 1; } && \
   openssl rsa -in privkey.pem -out "${caPath}/${caName}.cert.key" || { echo "Error 'openssl rsa'!"; exit 1; } && \
@@ -82,20 +91,38 @@ then
 fi
 
 
-echo "Creating User-Identity Cert '${identityFullName}'";
-
 identityFullName="${1}";
 identity=$(echo ${1/ /_} | tr '[:upper:]' '[:lower:]');
 
-openssl genrsa -des3 -out "${certPath}/${identity}.key" || { echo "Error 'openssl genrsa'!"; exit 1; } && \
-openssl req -new -key "${certPath}/${identity}.key" -out "${certPath}/${identity}.req" -subj "${crtSubject}" || { echo "Error 'openssl req'!"; exit 1; } && \
-openssl ca -config "${caPath}/openssl_ca.conf" -cert "${caPath}/${caName}.cert.crt" -keyfile "${caPath}/${caName}.cert.key" -out "${certPath}/${identity}.crt" -in "${certPath}/${identity}.req" || { echo "$
-openssl pkcs12 -export -inkey "${certPath}/${identity}.key" -name "${identityFullName}" -in "${certPath}/${identity}.crt" -certfile "${caPath}/${caName}.cert.crt" -out "${certPath}/${identity}.p12" || \
-{ echo "Error 'openssl pkcs12'!"; exit 1; } \
-&& \
+echo "Creating User-Identity Cert '${identityFullName}'";
+
+read -s -p "User Cert Password: " userCertPW;
+
+openssl genrsa -des3 -out "${certPath}/${identity}.key" -passout "pass:${userCertPW}" \
+|| { echo "Error 'openssl genrsa'!"; exit 1; } && \
+
+openssl req -new \
+        -key "${certPath}/${identity}.key" \
+        -subj "${crtSubject}" \
+        -out "${certPath}/${identity}.req" \
+        -passin "pass:${userCertPW}" \
+|| { echo "Error 'openssl req'!"; exit 1; } && \
+openssl ca \
+        -config "${caPath}/openssl_ca.conf" \
+        -cert "${caPath}/${caName}.cert.crt" \
+        -keyfile "${caPath}/${caName}.cert.key" \
+        -out "${certPath}/${identity}.crt" \
+        -in "${certPath}/${identity}.req" \
+        -passin "pass:${userCertPW}" \
+|| { echo "Error 'openssl ca'!"; exit 1; } && \
+openssl pkcs12 -export \
+        -inkey "${certPath}/${identity}.key" \
+        -name "${identityFullName}" \
+        -in "${certPath}/${identity}.crt" \
+        -certfile "${caPath}/${caName}.cert.crt" \
+        -out "${certPath}/${identity}.p12" \
+        -passout "pass:${userCertPW}" \
+|| { echo "Error 'openssl pkcs12'!"; exit 1; } && \
 {
   echo "Done";
-} || {
-  echo "Error creating cert!";
-  exit 1;
 }
