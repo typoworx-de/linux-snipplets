@@ -16,7 +16,7 @@ test -d "${caPath}" || mkdir -p "${caPath}";
 test -d "${certPath}" || mkdir -p "${certPath}";
 touch "${caPath}/index.db";
 touch "${caPath}/rand.db";
-echo 1001 > "${caPath}/serial.db";
+touch "${caPath}/serial.db";
 
 
 # Configuration
@@ -55,6 +55,8 @@ sed -i "s|{%caName}|${caName}|" "${caPath}/openssl_ca.conf";
 if [[ ! -f "${caPath}/${caName}.csr" ]];
 then
   echo "Creating CA Certificates";
+  
+  echo 1001 > "${caPath}/serial.db";
   openssl req -new > "${caPath}/${caName}.cert.csr"  -subj "${crtSubject}" || { echo "Error 'openssl req -new'!"; exit 1; } && \
   openssl rsa -in privkey.pem -out "${caPath}/${caName}.cert.key" || { echo "Error 'openssl rsa'!"; exit 1; } && \
   openssl x509 -in "${caPath}/${caName}.cert.csr" -out "${caPath}/${caName}.cert.crt"  -req -signkey "${caPath}/${caName}.cert.key" -days 3650 || { echo "Error 'openssl x509'!"; exit 1; } && {
