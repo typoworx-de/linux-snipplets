@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [[ -z $@ ]];
+then
+  echo "Syntax $(basename $0) {source-db} {target-db} {additional arguments same like mysql}";
+  exit 1;
+fi
+
+sourceDatabase="${1}";
+targetDatabase="${2}";
+
+mysqldump --opt "${sourceDatabase}" ${@:3} | pv | mysql "${targetDatabase}" ${@:3} && {
+  echo "Done";
+} || {
+  echo "Error duplicating database!";
+  exit 1;
+}
