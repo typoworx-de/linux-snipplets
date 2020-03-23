@@ -1,0 +1,10 @@
+[Unit]
+Description=Disable Turbo Boost on Intel CPU
+
+[Service]
+ExecStart=/bin/sh -c 'modprobe msr && sudo wrmsr --all 0x1a0 0x4000850089'
+ExecStop=/bin/sh -c 'modprobe msr && sudo wrmsr --all 0x1a0 0x850089'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target
