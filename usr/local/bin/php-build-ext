@@ -1,6 +1,10 @@
 #!/bin/bash
 
-#declare -a phpVersions=( 7.4 );
+if [[ -z $@ ]];
+then
+  echo "Syntax $(basename $0) [PHP-Version]";
+  exit 1;
+fi
 
 _path=$(pwd);
 
@@ -8,6 +12,20 @@ release='';
 basename=$(basename $(pwd));
 basename=${basename//[^a-zA-Z0-9]*/}
 package="php-${basename}";
+
+function phpVersions()
+{
+  declare -a phpVersions=();
+
+  for phpVersion in $(ls /usr/bin/php* /usr/local/bin/php* | grep -E 'php[0-9\.]+' | uniq);
+  do
+    versionNumber=${phpVersion##*/php};
+    phpVersions+=( "${versionNumber}" );
+  done
+
+  echo "${phpVersions[@]}";
+  return 0;
+}
 
 function build()
 {
@@ -32,7 +50,7 @@ function build()
     echo "Invalid PHP-Extension path: ${phpLibPath}";
     exit 1;
   fi
-
+  
   if [[ -d "${_path}/.git" ]];
   then
     release=$(git tag | tail -n 1);
@@ -54,22 +72,24 @@ function build()
       echo "Error cannot determine PHP-Extension library to install (tried: ${_path}/modules/${basename}.so)";
       exit 1;
     fi
-    
-        sudo cp ${_path}/modules/${basename}*.so ${phpLibPath}/${basename}.so;
+
+    echo "Installing ... cp ${_path}/modules/${basename}*.so ${phpLibPath}/${basename}.so";
+    sudo cp ${_path}/modules/${basename}*.so ${phpLibPath}/${basename}.so;
 
     make clean;
 
-    echo;
-    echo "Testing ..."
-    echo "extension=${basename}.so" | sudo tee /etc/php/${phpVersion}/mods-available/${basename}.ini;
-    echo
-    if [[ $(php7.3 -m | grep -c "PHP Startup: ${basename}") -eq 0 ]];
-    then
-      echo "Something went wrong! Disabling PHP-Module.";
-      echo ";extension=${basename}.so" | sudo tee /etc/php/${phpVersion}/mods-available/${basename}.ini;
-    else
-      echo "Everything works fine!";
-    fi
+    #echo;
+    #echo "Testing ..."
+    echo ";extension=${basename}.so" | sudo tee /etc/php/${phpVersion}/mods-available/${basename}.ini;
+    #echo
+
+    #if php7.3 -m 2> /dev/null | grep -c "Unable to initialize module" -eq 0;
+    #then
+    #  echo "Something went wrong! Disabling PHP-Module.";
+    #  echo ";extension=${basename}.so" | sudo tee /etc/php/${phpVersion}/mods-available/${basename}.ini;
+    #else
+    #  echo "Everything works fine!";
+    #fi
   }
 }
 
@@ -93,9 +113,13 @@ function checkinstall()
   exit $?;
 }
 
-build "${package}" "${release}" "${1}";
-
-#for phpVersion in "${phpVersions[@]}"
-#do
-#  build "${package}" "${release}" "${phpVersion}";
-#done
+if [[ "${1}" == 'all' ]];
+then
+  for phpVersion in $(phpVersions)
+  do
+    echo "Building for PHP ${phpVersion} ...";
+    build "${package}" "${release}" "${phpVersion}";
+  done
+else
+  build "${package}" "${release}" "${1}";
+fi
