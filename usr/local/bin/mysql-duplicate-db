@@ -70,8 +70,8 @@ mysqlArgs='';
 
 # Copy DB-Structure
 echo "Cloning Database-Structure";
-#mysql ${mysqlArgs} -Ne "CREATE DATABASE IF NOT EXISTS \`${target_database}\` CHARACTER SET utf8 COLLATE utf8_general_ci" || die "Error creating database '${target_database}'";
-#mysqldump "${source_database}" --no-data --skip-dump-date --skip-comments ${mysqlArgs} | sed 's/^CREATE TABLE /CREATE TABLE IF NOT EXISTS /' | mysql "${target_database}" ${mysqlArgs} || die "Error clonin$
+mysql ${mysqlArgs} -Ne "CREATE DATABASE IF NOT EXISTS \`${target_database}\` CHARACTER SET utf8 COLLATE utf8_general_ci" || die "Error creating database '${target_database}'";
+mysqldump "${source_database}" --no-data --skip-dump-date --skip-comments ${mysqlArgs} | sed 's/^CREATE TABLE /CREATE TABLE IF NOT EXISTS /' | mysql "${target_database}" ${mysqlArgs} || die "Error clonin$
 
 mysql ${mysqlArgs} -Ne "SHOW TABLES FROM \`${source_database}\`;" | while IFS= read -r tableName
 do
