@@ -1,16 +1,24 @@
 #!/bin/bash
 
-#
-# Notice:
-# use --lock-tables=false and --single-transaction=TRUE only in InnoDB!
-#
-mysqldumpArguments='--lock-tables=true --max-allowed-packet=1024M --add-drop-table --skip-dump-date --single-transaction=TRUE --lock-tables=false';
+getopts=`getopt -o u:p::h:f: --long user:,password::,host:,syntax,help -n "$0" -- "${@:3}"`
 
-if [[ -z $@ ]];
-then
-  echo "Syntax $(basename $0) {source-db} {target-db} {additional arguments same like mysql}";
+source_database="${1}";
+target_database="${2}";
+
+mysql_user='';
+mysql_pw='';
+mysql_host='localhost';
+
+
+function syntaxHelp {
+  echo "Syntax: $(basename $0) [source-database] [target-database] -u|--user -p|--password -h|--host";
+}
+
+function die()
+{
+  echo -e "$@";
   exit 1;
-fi
+}
 
 function shutdown()
 {
@@ -24,25 +32,51 @@ function shutdown()
   exit ${exitCode};
 }
 
-function checkPipeBufferSize()
-{
-  if [[ $(cat /proc/sys/fs/pipe-max-size) -lt 16384 ]];
-  then
-    echo "It is recommended to increase pipe-buffer max size!";
-    echo "sudo sysctl fs.pipe-max-size=16384";
-  fi
-}
+eval set -- "$getopts"
+while true ; do
+    case "$1" in
+        -d|--database)
+                mysql_db=$2;
+                shift 2;;
+        -u|--user)
+                mysql_user=$2;
+                shift 2;;
+        -p|--password)
+                mysql_pw="${2#"${2%%[![:space:]]*}"}";
+                if [[ "$mysql_pw" -eq "" ]];
+                then
+                        read -s -p "MySQL Password:" mysql_pw;
+                fi
+                shift 2;;
+        -h|--host)
+                mysql_host=$2;
+                shift 2;;
+        -f|--file)
+                FILE=$2;
+                shift 2;;
+        --) shift; break;;
+        *|--syntax|--help)
+                syntaxHelp;
+                exit 1;;
+    esac
+done
 
-sourceDatabase="${1}";
-targetDatabase="${2}";
+[[ -z "${source_database}" || -z "${target_database}" ]] && { syntaxHelp; exit 1; }
 
-checkPipeBufferSize;
+mysqlArgs='';
+[[ -z "${mysql_user}" ]] || { mysqlArgs+=" -u ${mysql_user}"; }
+[[ -z "${mysql_pw}" ]]   || { mysqlArgs+=" -h ${mysql_pw}"; }
+[[ -z "${mysql_host}" ]] || { mysqlArgs+=" -h ${mysql_host}"; }
 
-mysqldump "${sourceDatabase}" --opt ${mysqldumpArguments} ${@:3} | pv | mysql-import "${targetDatabase}" ${@:3} && {
-  echo "Done";
-} || {
-  echo "Error duplicating database!";
-  shutdown 1;
-}
+# Copy DB-Structure
+echo "Cloning Database-Structure";
+#mysql ${mysqlArgs} -Ne "CREATE DATABASE IF NOT EXISTS \`${target_database}\` CHARACTER SET utf8 COLLATE utf8_general_ci" || die "Error creating database '${target_database}'";
+#mysqldump "${source_database}" --no-data --skip-dump-date --skip-comments ${mysqlArgs} | sed 's/^CREATE TABLE /CREATE TABLE IF NOT EXISTS /' | mysql "${target_database}" ${mysqlArgs} || die "Error clonin$
+
+mysql ${mysqlArgs} -Ne "SHOW TABLES FROM \`${source_database}\`;" | while IFS= read -r tableName
+do
+  echo "Cloning ${source_database}.${tableName}";
+  mysql ${mysqlArgs} -Ne "INSERT INTO \`${target_database}\`.\`${tableName}\` (SELECT * FROM \`${source_database}\`.\`${tableName}\`);" && echo -e "\e[32mok\e[0m" || echo -e "\e[31merror\e[0m";
+done
 
 shutdown;
