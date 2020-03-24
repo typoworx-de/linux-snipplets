@@ -1,17 +1,48 @@
 #!/bin/bash
 
+#
+# Notice:
+# use --lock-tables=false and --single-transaction=TRUE only in InnoDB!
+#
+mysqldumpArguments='--lock-tables=true --max-allowed-packet=1024M --add-drop-table --skip-dump-date --single-transaction=TRUE --lock-tables=false';
+
 if [[ -z $@ ]];
 then
   echo "Syntax $(basename $0) {source-db} {target-db} {additional arguments same like mysql}";
   exit 1;
 fi
 
+function shutdown()
+{
+  exitCode=0;
+
+  if [[ ! -z "${1}" && "${1}" -gt 0 ]];
+  then
+    exitCode="${1}";
+  fi
+
+  exit ${exitCode};
+}
+
+function checkPipeBufferSize()
+{
+  if [[ $(cat /proc/sys/fs/pipe-max-size) -lt 16384 ]];
+  then
+    echo "It is recommended to increase pipe-buffer max size!";
+    echo "sudo sysctl fs.pipe-max-size=16384";
+  fi
+}
+
 sourceDatabase="${1}";
 targetDatabase="${2}";
 
-mysqldump --opt "${sourceDatabase}" ${@:3} | pv | mysql "${targetDatabase}" ${@:3} && {
+checkPipeBufferSize;
+
+mysqldump "${sourceDatabase}" --opt ${mysqldumpArguments} ${@:3} | pv | mysql-import "${targetDatabase}" ${@:3} && {
   echo "Done";
 } || {
   echo "Error duplicating database!";
-  exit 1;
+  shutdown 1;
 }
+
+shutdown;
