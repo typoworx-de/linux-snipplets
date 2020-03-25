@@ -1,20 +1,64 @@
 #!/bin/bash
 
-sqlBegin=$(mktemp);
+function syntaxHelp()
+{
+  echo "Syntax:";
+  echo "Using STDIN: $(basename $0) [database-name] -h [hostname] -u [user] -p [pass]";
+  echo "or";
+  echo "Using file:  $(basnename $0) {arguments like above} ./my-database.sql";
+  exit 1;
+}
+
+if [[ -z $@ ]];
+then
+  syntaxHelp;
+fi
+
+# Check for STDIN
+if [ ! -t 0 ];
+then
+
+  sqlBegin=$(mktemp);
 cat << EOF > "${sqlBegin}"
-SET autocommit=0;
-SET unique_checks=0;
-SET foreign_key_checks=0;
-SET autocommit=0;
+  SET autocommit=0;
+  SET unique_checks=0;
+  SET foreign_key_checks=0;
+  SET autocommit=0;
 EOF
 
-sqlEnd=$(mktemp);
+  sqlEnd=$(mktemp);
 cat << EOF > "${sqlEnd}"
-COMMIT;
-SET autocommit=1;
-SET unique_checks=1;
-SET foreign_key_checks=1;
+  COMMIT;
+  SET autocommit=1;
+  SET unique_checks=1;
+  SET foreign_key_checks=1;
 EOF
 
-cat ${sqlBegin} - ${sqlEnd} | pv | mysql --max_allowed_packet=256M $@;
-rm ${sqlBegin} ${sqlEnd};
+  cat ${sqlBegin} - ${sqlEnd} | pv -eta --rate | mysql --max_allowed_packet=256M $@;
+  rm ${sqlBegin} ${sqlEnd};
+elif [[ -f "${@: -1}" ]];
+then
+
+  sqlFile=$(realpath "${@: -1}");
+  fileBytes=$(stat --printf="%s" "${sqlFile}");
+
+  read -r -d '' query << EOM
+  SET autocommit=0;
+  SET unique_checks=0;
+  SET foreign_key_checks=0;
+  SET autocommit=0;
+
+  CREATE DATABASE IF NOT EXISTS \`${1}\`;
+  USE \`${1}\`;
+  SOURCE ${sqlFile};
+
+  COMMIT;
+  SET autocommit=1;
+  SET unique_checks=1;
+  SET foreign_key_checks=1;
+EOM
+
+  mysql ${@:2:$#-2} -Bse "${query//$'\n'/}";
+else
+  syntaxHelp;
+fi
