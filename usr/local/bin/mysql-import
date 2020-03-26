@@ -38,18 +38,24 @@ EOF
   rm ${sqlBegin} ${sqlEnd};
 elif [[ -f "${@: -1}" ]];
 then
-
   sqlFile=$(realpath "${@: -1}");
-  fileBytes=$(stat --printf="%s" "${sqlFile}");
+
+  echo "Importing using SOURCE Payload from file ${sqlFile} ...";
+  createTableStatement='';
+
+  if [[ "${#}" -gt 1 ]];
+  then
+    createTableStatement="CREATE DATABASE IF NOT EXISTS \`${1}\`; USE \`${1}\`;";
+  fi
+
+  #fileBytes=$(stat --printf="%s" "${sqlFile}");
 
   read -r -d '' query << EOM
   SET autocommit=0;
   SET unique_checks=0;
   SET foreign_key_checks=0;
   SET autocommit=0;
-
-  CREATE DATABASE IF NOT EXISTS \`${1}\`;
-  USE \`${1}\`;
+  ${createTableStatement}
   SOURCE ${sqlFile};
 
   COMMIT;
