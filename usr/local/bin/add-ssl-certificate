@@ -1,0 +1,19 @@
+#!/bin/bash
+
+[[ -d /usr/local/share/ca-certificates/self-signed/ ]] || {
+  sudo mkdir /usr/local/share/ca-certificates/self-signed/;
+}
+
+[[ -d /usr/share/ca-certificates/self-signed ]] || {
+  sudo mkdir /usr/share/ca-certificates/self-signed;
+}
+
+certName=$(basename "$1");
+
+sudo cp "$1" /usr/local/share/ca-certificates/self-signed/"${certName}";
+sudo cp "$1" /usr/share/ca-certificates/self-signed/"${certName}";
+sudo update-ca-certificates && \
+sudo dpkg-reconfigure ca-certificates;
+
+#-certutil -d sql:$HOME/.pki/nssdb -A -t "P,," -n "$1"-i "$1"
+certutil -A -d sql:$HOME/.pki/nssdb -n "CA certificate" -t "CT,," -a -i "$1";
