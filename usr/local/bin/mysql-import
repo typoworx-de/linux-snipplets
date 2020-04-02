@@ -17,7 +17,6 @@ fi
 # Check for STDIN
 if [ ! -t 0 ];
 then
-
   sqlBegin=$(mktemp);
 cat << EOF > "${sqlBegin}"
   SET autocommit=0;
@@ -44,9 +43,9 @@ then
   echo "Importing using SOURCE Payload from file ${sqlFile} ...";
   createTableStatement='';
 
-  if [[ "${#}" -gt 1 && ! "${1}" =~ "-" ]];
+  if [[ "${#}" -gt 1 && ! "${1}" = '-*' ]];
   then
-    mysqlParams=${@:2:$#-1};
+    mysqlParams=${@:2:$#-2};
     echo "Creating database (if not existing): '${1}'";
     createTableStatement="CREATE DATABASE IF NOT EXISTS \`${1}\`; USE \`${1}\`;";
   else
