@@ -20,49 +20,53 @@ if [[ ${#} == 1 ]];
 then
   if [[ -d "${1}" ]];
   then
-        _WORKDIR="${1}";
+    _WORKDIR="${1}";
   else
-        _WORKDIR=$(pwd);
-        _CMD="${@}";
+    _WORKDIR=$(pwd);
+    _CMD="${@}";
   fi
 else
   if [[ -d "${1}" ]];
   then
-        _WORKDIR="${1}";
-        _CMD="${@: 2}";
+    _WORKDIR="${1}";
+    _CMD="${@: 2}";
   else
-        _WORKDIR=$(pwd);
-        _CMD="${@}";
+    _WORKDIR=$(pwd);
+    _CMD="${@}";
   fi
 fi
 
 if [[ ! -z "${_WORKDIR}" ]];
 then
-        _WORKDIR=$(realpath "${_WORKDIR}");
-        _DIRUSER=$(stat -c '%G' "${_WORKDIR}");
+  _WORKDIR=$(realpath "${_WORKDIR}");
+  _DIRUSER=$(stat -c '%G' "${_WORKDIR}");
 else
-        echo "Error: No Workdir given!"
-        exit 1;
-fi
-
-if [[ -z $_CMD ]];
-then
-        _CMD=$SHELL;
+  echo "Error: No Workdir given!"
+  exit 1;
 fi
 
 read -r -a cmd <<< "${_CMD}";
 
 _CMD=${cmd[0]};
 _ARGS='';
+_SHELL_ARGS='';
 
-if [[ ${#cmd[@]} > 1 ]];
+if [[ -f $(which sudir-shell) ]];
 then
-        _ARGS="'${cmd[@]: 1}'";
+  _SHELL_ARGS=" -s $(which sudir-shell)";
+fi
+
+if [[ ${#cmd[@]} > 0 ]];
+then
+  _ARGS="'${cmd[@]: 1}'";
+  _SHELL_ARGS+=" -c ${_CMD} ${_ARGS}";
+else
+  _SHELL_ARGS+=' --login -s /bin/bash';
 fi
 
 if [[ ! -z "${_DIRUSER}" ]] && [[ "${_DIRUSER}" != "$USER" ]];
 then
-        sudo su ${_DIRUSER} - -c "${_CMD} ${_ARGS}";
+  echo sudo su ${_DIRUSER} -- ${_SHELL_ARGS};
 else
-        $_CMD;
+  $_CMD;
 fi
