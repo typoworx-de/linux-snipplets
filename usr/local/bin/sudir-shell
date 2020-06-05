@@ -1,0 +1,10 @@
+#!/bin/bash
+_CMD=("${@}");
+
+_SHELL_ARGS='';
+if [[ "${#@}" > 0 ]];
+then
+  _SHELL_ARGS="-c ${1} ${_CMD[@]: 1}";
+fi
+
+bash --rcfile ~/.profile ${_SHELL_ARGS}
