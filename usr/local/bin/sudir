@@ -66,7 +66,7 @@ fi
 
 if [[ ! -z "${_DIRUSER}" ]] && [[ "${_DIRUSER}" != "$USER" ]];
 then
-  echo sudo su ${_DIRUSER} -- ${_SHELL_ARGS};
+  sudo su ${_DIRUSER} -- ${_SHELL_ARGS};
 else
   $_CMD;
 fi
