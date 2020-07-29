@@ -4,8 +4,8 @@ dirUser=$(sudir-shell -c whoami);
 
 if [[ "$USER" != "${dirUser}" ]];
 then
-  sudir-shell -c $0;
+  sudir-shell -c $@;
   exit $?
 fi
 
-echo "require('grunt-cli/bin/grunt');" | /usr/bin/env node
+echo "require('grunt-cli/bin/grunt');" | /usr/bin/env node - $@
