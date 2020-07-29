@@ -53,20 +53,22 @@ _SHELL_ARGS='';
 
 if [[ -f $(which sudir-shell) ]];
 then
-  _SHELL_ARGS=" -s $(which sudir-shell)";
+  _SHELL=$(which sudir-shell);
+else
+  _SHELL='/bin/bash';
 fi
 
 if [[ ${#cmd[@]} > 0 ]];
 then
   _ARGS="'${cmd[@]: 1}'";
-  _SHELL_ARGS+=" -c ${_CMD} ${_ARGS}";
+  _SHELL_ARGS+=" -s ${_SHELL} -c ${_CMD} -- ${_ARGS}";
 else
-  _SHELL_ARGS+=' --login -s /bin/bash';
+  _SHELL_ARGS+=" --login -s ${_SHELL}";
 fi
 
 if [[ ! -z "${_DIRUSER}" ]] && [[ "${_DIRUSER}" != "$USER" ]];
 then
-  sudo su ${_DIRUSER} -- ${_SHELL_ARGS};
+  sudo su ${_DIRUSER} ${_SHELL_ARGS};
 else
   $_CMD;
 fi
