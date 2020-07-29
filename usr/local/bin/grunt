@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
-dirUser=$(sudir-shell -c whoami);
+dirUser=$(sudir whoami);
 
 if [[ "$USER" != "${dirUser}" ]];
 then
-  sudir-shell -c $@;
+  sudir $0 $@;
   exit $?
 fi
 
-echo "require('grunt-cli/bin/grunt');" | /usr/bin/env node - $@
+echo "require('grunt-cli/bin/grunt');" | /usr/bin/env node - $@;
+exit $?;
