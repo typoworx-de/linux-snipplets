@@ -68,7 +68,7 @@ fi
 
 if [[ ! -z "${_DIRUSER}" ]] && [[ "${_DIRUSER}" != "$USER" ]];
 then
-  sudo su ${_DIRUSER} ${_SHELL_ARGS};
+  sudo -S $(which askpass pkexec | head -n 1) su - ${_DIRUSER} ${_SHELL_ARGS};
 else
   $_CMD;
 fi
