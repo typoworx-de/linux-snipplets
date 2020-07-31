@@ -61,14 +61,15 @@ fi
 if [[ ${#cmd[@]} > 0 ]];
 then
   _ARGS="'${cmd[@]: 1}'";
-  _SHELL_ARGS+=" -s ${_SHELL} -c ${_CMD} -- ${_ARGS}";
+  _SHELL_ARGS+="-s ${_SHELL} -c ${_CMD} -- ${_ARGS}";
 else
-  _SHELL_ARGS+=" --login -s ${_SHELL}";
+  _SHELL_ARGS+="-s ${_SHELL}";
 fi
 
 if [[ ! -z "${_DIRUSER}" ]] && [[ "${_DIRUSER}" != "$USER" ]];
 then
-  sudo -S $(which askpass pkexec | head -n 1) su - ${_DIRUSER} ${_SHELL_ARGS};
+  #sudo -S $(which askpass pkexec | head -n 1) su ${_DIRUSER} ${_SHELL_ARGS};
+  sudo su ${_DIRUSER} ${_SHELL_ARGS};
 else
   $_CMD;
 fi
