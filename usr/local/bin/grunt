@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-dirUser=$(sudir whoami);
+path=$(pwd);
+dirUser=$(stat -c '%G' "${path}");
 
 if [[ "$USER" != "${dirUser}" ]];
 then
