@@ -1,0 +1,5 @@
+#event=jack/*
+#action=/etc/acpi/headphone-jack.sh %e
+
+event=jack/headphone
+action=/etc/acpi/headphone-jack.sh %e
