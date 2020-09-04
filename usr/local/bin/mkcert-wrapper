@@ -1,0 +1,58 @@
+#!/bin/bash
+
+_DIR=$(dirname $0);
+_CERTDIR='/etc/ssl/private/self-signed';
+_CAROOT="${_CERTDIR}";
+
+_MKCERT_RELEASE='v1.4.1';
+
+ARCH=`uname -m`
+if [ ${ARCH} == 'x86_64' ]; then
+  ARCH='amd64';
+fi
+
+if [[ ! -f "${_DIR}/mkcert-linux-${ARCH}" ]];
+then
+  echo "Downloading mkcert-binary ${_DIR}/mkcert-linux-${ARCH}";
+  wget -q -O "${_DIR}/mkcert-linux-${ARCH}" "https://github.com/FiloSottile/mkcert/releases/download/${_MKCERT_RELEASE}/mkcert-${_MKCERT_RELEASE}-linux-${ARCH}" || {
+    echo "Error downloading mkcert-binary version ${_MKCERT_RELEASE} for arch ${ARCH}";
+    exit 1;
+  }
+fi
+
+MKCERT_BIN=$(realpath "${_DIR}/mkcert-linux-${ARCH}");
+
+if [ ! -x ${MKCERT_BIN} ];
+then
+  echo "Missing executable permission. Trying to fix ...";
+  chmod +x ${MKCERT_BIN} || exit 1;
+fi
+
+if [[ "$@" = *--help* ]];
+then
+  #${MKCERT_BIN} --help;
+  echo "$(basename $0) -d my-domain.tld -d www.my-domain.tld *.my-second-domain.tld";
+  exit 1;
+fi
+
+declare -a DOMAINS=();
+for ((i=1;i < $#;i++))
+{
+  if [[ "${!i}" == "-d" ]];
+  then
+    n=$((i+1));
+    DOMAINS+=("${!n}");
+  fi
+}
+
+CERTNAME='';
+if [[ "${DOMAINS[@]}" = *"*."* ]];
+then
+  CERTNAME='_wildcard.'$(expr match "${DOMAINS[0]}" '.*\.\(.*\..*\)')
+else
+  CERTNAME=$(expr match "${DOMAINS[0]}" '.*\.\(.*\..*\)')
+fi
+
+test -d "${_CERTDIR}/${CERTNAME}" || mkdir "${_CERTDIR}/${CERTNAME}";
+(cd ${_CERTDIR}/${CERTNAME}; CAROOT="${_CAROOT}" ${MKCERT_BIN} "${DOMAINS[@]}" && mv ${_CERTDIR}/${CERTNAME}.* "${_CERTDIR}/${CERTNAME}");
+rm -f ${_CERTDIR}/${CERTNAME}-key.*
