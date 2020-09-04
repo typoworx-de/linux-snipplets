@@ -54,5 +54,7 @@ else
 fi
 
 test -d "${_CERTDIR}/${CERTNAME}" || mkdir "${_CERTDIR}/${CERTNAME}";
-(cd ${_CERTDIR}/${CERTNAME}; CAROOT="${_CAROOT}" ${MKCERT_BIN} "${DOMAINS[@]}" && mv ${_CERTDIR}/${CERTNAME}.* "${_CERTDIR}/${CERTNAME}");
-rm -f ${_CERTDIR}/${CERTNAME}-key.*
+(cd ${_CERTDIR}/${CERTNAME}; CAROOT="${_CAROOT}" ${MKCERT_BIN} -cert-file "${_CERTDIR}/${CERTNAME}/${CERTNAME}.pem" "${DOMAINS[@]}");
+
+# Clean-Up
+rm -f "${_CERTDIR}/${CERTNAME}-key".* 1> /dev/null 2>&1;
