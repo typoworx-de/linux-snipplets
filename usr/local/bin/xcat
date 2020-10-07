@@ -56,4 +56,7 @@ then
     #echo "Processing ${file}"
     xcat "${file}";
   done
+  exit 0;
+else
+  exit 1;
 fi
