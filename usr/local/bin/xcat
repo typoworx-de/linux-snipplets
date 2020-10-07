@@ -40,19 +40,20 @@ function xcat()
   return $?;
 }
 
-if [ -z "$1" ] || [ -z "$2" ];
+if [ -z "$1" ];
 then
- echo "Syntax: $(basename $0) [path] [target dictionary-file]";
+  echo "Syntax: $(basename $0) {archive-file}";
   exit 1;
 fi
 
-test -f "$2.lock" && {
-  echo "$2 is already locked by other process!";
-  exit 1;
-}
-
-find "$1" -maxdepth 2 -regextype posix-extended -regex '^.*\.(txt|lst|gz|bz|bz2|zip|7z)$' -print0 | while IFS= read -r -d '' file;
-do
-  echo "Processing ${file}"
-  xcat "${file}";
-done
+if [ -f "$1" ];
+then
+  xcat "${1}" || exit 1;
+elif [ -d "$1" ]
+then
+  find "$1" -maxdepth 2 -regextype posix-extended -regex '^.*\.(txt|lst|gz|bz|bz2|zip|7z)$' -print0 | while IFS= read -r -d '' file;
+  do
+    #echo "Processing ${file}"
+    xcat "${file}";
+  done
+fi
