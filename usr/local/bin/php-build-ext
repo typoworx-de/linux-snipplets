@@ -13,6 +13,15 @@ basename=$(basename $(pwd));
 basename=${basename//[^a-zA-Z0-9]*/}
 package="php-${basename}";
 
+declare configureArgs;
+declare makeArgs;
+
+if [[ -f php_build_ext.config ]];
+then
+  source php_build_ext.config;
+fi
+
+
 function phpVersions()
 {
   declare -a phpVersions=();
@@ -50,7 +59,7 @@ function build()
     echo "Invalid PHP-Extension path: ${phpLibPath}";
     exit 1;
   fi
-  
+
   if [[ -d "${_path}/.git" ]];
   then
     release=$(git tag | tail -n 1);
@@ -61,11 +70,33 @@ function build()
     }
   fi
 
+  sudo apt-get install php${phpVersion}-dev;
+
+  sudo update-alternatives --set php-config /usr/bin/php-config${phpVersion}
+
+  sudo pecl config-set php_ini "/etc/php/${phpVersion}/cli/php.ini" > /dev/null && \
+  sudo pecl config-set ext_dir "${phpLibPath}" > /dev/null && \
+  sudo pecl config-set bin_dir "/usr/bin/" > /dev/null && \
+  sudo pecl config-set php_bin "/usr/bin/php${phpVersion}" > /dev/null && \
+  sudo pecl config-set php_suffix "${phpVersion}" > /dev/null || {
+    echo "Error preparing pecl-config for php-${phpVersion}";
+    exit 1;
+  }
+
   packageName="php${phpVersion}-${package}";
 
+  echo
+  echo "----------------------------------------";
+  echo "Running using phpize${phpVersion}";
+  echo "----------------------------------------";
+  echo
+
+  make clean;
+  make distclean;
+
   phpize${phpVersion} && \
-  ./configure || { echo "Configure failed!"; exit 1; } && \
-  make -j 4 || { echo "Make failed!"; exit 1; } && {
+  ./configure ${configureArgs} || { echo "Configure failed!"; exit 1; } && \
+  make -j 4 ${makeArgs} || { echo "Make failed!"; exit 1; } && {
     #if [[ ! -f "${_path}/modules/${basename}*.so" ]];
     if ls "${_path}/modules/${basename}*.so" 1> /dev/null 2>&1;
     then
@@ -77,10 +108,11 @@ function build()
     sudo cp ${_path}/modules/${basename}*.so ${phpLibPath}/${basename}.so;
 
     make clean;
+    make distclean;
 
     #echo;
     #echo "Testing ..."
-    echo ";extension=${basename}.so" | sudo tee /etc/php/${phpVersion}/mods-available/${basename}.ini;
+    echo "extension=${basename}.so" | sudo tee /etc/php/${phpVersion}/mods-available/${basename}.ini;
     #echo
 
     #if php7.3 -m 2> /dev/null | grep -c "Unable to initialize module" -eq 0;
