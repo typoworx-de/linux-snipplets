@@ -1,7 +1,6 @@
 #!/bin/bash
-
 _DIR=$(dirname $0);
-_CERTDIR='/etc/ssl/private/self-signed';
+_CERTDIR='/etc/ssl/self-signed';
 _CAROOT="${_CERTDIR}";
 
 _MKCERT_RELEASE='v1.4.1';
@@ -28,22 +27,37 @@ then
   chmod +x ${MKCERT_BIN} || exit 1;
 fi
 
-if [[ "$@" = *--help* ]];
+if [[ "$@" = *-help* ]];
 then
-  #${MKCERT_BIN} --help;
-  echo "$(basename $0) -d my-domain.tld -d www.my-domain.tld *.my-second-domain.tld";
-  exit 1;
+  ${MKCERT_BIN} -help;
+  exit $?;
+elif  [[ "$@" = *-install* ]];
+then
+  sudo ${MKCERT_BIN} -install;
+  exit $?;
+elif  [[ "$@" = *-uninstall* ]];
+then
+  sudo ${MKCERT_BIN} -uninstall;
+  exit $?;
 fi
 
 declare -a DOMAINS=();
-for ((i=1;i < $#;i++))
+for ((i=0;i < $#;i++))
 {
-  if [[ "${!i}" == "-d" ]];
-  then
+#  The following if would make the command "certbot" compatible
+#  if [[ "${!i}" == "-d" ]];
+#  then
     n=$((i+1));
     DOMAINS+=("${!n}");
-  fi
+#  fi
 }
+
+if [[ -z ${DOMAINS#} ]];
+then
+  ${MKCERT_BIN} -help;
+  exit $?;
+fi
+
 
 CERTNAME='';
 if [[ "${DOMAINS[@]}" = *"*."* ]];
@@ -53,8 +67,8 @@ else
   CERTNAME=$(expr match "${DOMAINS[0]}" '.*\.\(.*\..*\)')
 fi
 
-test -d "${_CERTDIR}/${CERTNAME}" || mkdir "${_CERTDIR}/${CERTNAME}";
-(cd ${_CERTDIR}/${CERTNAME}; CAROOT="${_CAROOT}" ${MKCERT_BIN} -cert-file "${_CERTDIR}/${CERTNAME}/${CERTNAME}.pem" "${DOMAINS[@]}");
+test -d "${_CERTDIR}/${CERTNAME}" || sudo mkdir "${_CERTDIR}/${CERTNAME}" || exit 1;
+(cd ${_CERTDIR}/${CERTNAME}; CAROOT="${_CAROOT}" sudo ${MKCERT_BIN} -cert-file "${_CERTDIR}/${CERTNAME}/${CERTNAME}.pem" "${DOMAINS[@]}");
 
 # Clean-Up
 rm -f "${_CERTDIR}/${CERTNAME}-key".* 1> /dev/null 2>&1;
