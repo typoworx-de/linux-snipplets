@@ -1,0 +1,16 @@
+#!/bin/bash
+
+find /bin /usr/bin /usr/local/bin -maxdepth 1 -regextype posix-extended -regex '.*\/(gcc|cpp|g\+\+)-[0-9\.]*$' -p>
+| while IFS= read -r -d '' path; do
+  echo $path;
+  
+  basePath=$(dirname ${path});
+  baseName=$(basename ${path});
+  localName=${baseName%-*};
+  version=$(echo ${baseName} | grep -Eo '[0-9\.]+');
+  priority=${version/./};
+
+  printf "%30s %10s %30s %4s" ${localName} ${localName} ${path} ${priority};
+  sudo update-alternatives --install ${basePath}/${localName} ${localName} ${path} ${priority}
+  echo;
+done
