@@ -110,6 +110,11 @@ targetPath=$(resolvePath "${target}");
   exit 1;
 }
 
+[[ "${sourcePath}" == "${targetPath}" ]] && {
+  echo "[!] Error: Source and Target cannot be the same!";
+  exit 1;
+}
+
 [[ -f "${targetPath}/.mount-point" ]] && {
   printf "[i] Found .mount-point Meta-File on target\n";
 
