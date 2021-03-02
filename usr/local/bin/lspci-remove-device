@@ -1,0 +1,19 @@
+#!/bin/bash
+
+[[ -z "$@" ]] && {
+  echo "Syntax: $(basename $0) [audio]";
+  echo "[audio] will match all devices matching keyword 'audio'";
+  echo "will invoke device removal!";
+
+  exit 1;
+}
+
+deviceIds=($(lspci | grep -i "${1}" | cut -d' ' -f1));
+
+for id in "${deviceIds[@]}"
+do
+  #devicePath=$(find /sys/devices -name "*${id}*" -wholename '*/remove' -print | tail -n1);
+  devicePath=$(find /sys/devices -wholename "*${id}*/remove" -print -quit);
+  echo 1 | tee $devicePath;
+
+done
