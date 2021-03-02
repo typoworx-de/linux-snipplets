@@ -8,12 +8,11 @@
   exit 1;
 }
 
-deviceIds=($(lspci | grep -i "${1}" | cut -d' ' -f1));
+deviceIds=($(lspci | grep -iE "${1}" | cut -d' ' -f1));
 
 for id in "${deviceIds[@]}"
 do
-  #devicePath=$(find /sys/devices -name "*${id}*" -wholename '*/remove' -print | tail -n1);
   devicePath=$(find /sys/devices -wholename "*${id}*/remove" -print -quit);
+  echo "Disabling device: ${devicePath}"
   echo 1 | tee $devicePath;
-
 done
