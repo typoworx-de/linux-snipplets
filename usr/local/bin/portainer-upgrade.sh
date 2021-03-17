@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #_releaseBranch='portainer/portainer';          # release-branch 1.x
-_releaseBranch='portainer/portainer-ce:2.0.0';  # release-branch 2.x
+_releaseBranch='portainer/portainer-ce:latest';  # release-branch 2.x
 
 _portainerVolume='data.portainer';
 
