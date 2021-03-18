@@ -1,7 +1,13 @@
 #!/bin/bash
 
+[[ -z "${@}" ]] && {
+  echo "Syntax: $(basename $0) {vendorId}:{productId}";
+  echo;
+  exit 1;
+}
+
 getdevice()
- {
+{
     idV=${1%:*}
     idP=${1#*:}
     for path in `LC_ALL=C find /sys/ -name idVendor 2>&1 | grep -v 'Permission denied' | rev | cut -d/ -f 2- | rev`;
