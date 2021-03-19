@@ -1,0 +1,43 @@
+#!/bin/bash
+
+[[ -z "$@" ]] && {
+  echo "Syntax: $(basename $0) /dev/sd{x}";
+  exit 1;
+}
+
+device="${1}";
+deviceName=${1##*/};
+
+[[ $(blkid "${device}") ]] || {
+  echo "No valid device given!";
+  exit 1;
+}
+
+date=$(date '+%Y-%m-%d');
+backupFile="/tmp/${deviceName}.${date}.part-table";
+echo "Creating partition-table backup to ${backupFile}";
+sfdisk -d "${device}" > ${backupFile} || {
+  echo "Error creating partition-table backup!";
+  exit 1;
+}
+
+echo "Rescanning for changed disk-geometry ...";
+echo '1' | tee /sys/class/scsi_disk/*/device/rescan
+partprobe ${device};
+
+echo "Trying to resize disk ...";
+part=$(grep  "${deviceName}" /proc/partitions | tail -1 | awk '{print $4}' | xargs)
+partN=$(echo $part | tail -c 2) 
+
+(
+echo d # Delete partition
+echo $partN # Last partition
+echo n # Add a new partition
+echo p # Primary partition
+echo $partN # Last partition
+echo   # First sector (Accept default: 1)
+echo   # Last sector (Accept default: varies)
+echo w # Write changes
+) | fdisk ${device} || exit 2;
+
+exit 0;
