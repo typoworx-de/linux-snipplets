@@ -25,5 +25,17 @@ fi
 
 apt-get clean && \
 apt-get autoclean && \
-apt-get update && \
-dpkg --list | cut -d " " -f 3 | grep -E "$1" | xargs sudo apt-get -o Dpkg::Options::="--force-overwrite" install --reinstall;
+dpkg --list | cut -d " " -f 3 | grep -E "$1" | \
+xargs | while read -r packages;
+do
+#  sudo dpkg -r --force-depends ${packages};
+   (cd /var/cache/apt/archives; sudo apt-get download ${packages});
+
+   for singlePackage in ${packages};
+   do
+     sudo find /var/cache/apt/archives -type f -iname "*${singlePackage//:/*}*" -exec dpkg -x {} / \;
+   done
+
+   sudo apt-get -o Dpkg::Options::="--force-overwrite,--force-confnew,--force-confask" -y install --reinstall --purge --no-install-recommends ${packages} \
+   || sudo apt-get install -fy;
+done
