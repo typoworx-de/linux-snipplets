@@ -22,21 +22,58 @@ then
   exit 1;
 fi
 
-echo "Using php-${phpVersion}";
+function _pecl()
+{
+  [ -d /usr/share/php${phpVersion} ] || {
+    cp -R /usr/share/php /usr/share/php${phpVersion}
+  }
 
-sudo pecl config-set data_dir "/usr/share/php${phpVersion}/data" > /dev/null && \
-sudo pecl config-set cfg_dir "/usr/share/php${phpVersion}/cfg" > /dev/null && \
-sudo pecl config-set php_ini "/etc/php/${phpVersion}/cli/php.ini" > /dev/null && \
-sudo pecl config-set ext_dir "${phpLibPath}" > /dev/null && \
-sudo pecl config-set bin_dir "/usr/bin/" > /dev/null && \
-sudo pecl config-set php_bin "/usr/bin/php${phpVersion}" > /dev/null && \
-sudo pecl config-set php_suffix "${phpVersion}" > /dev/null || {
-  echo "Error preparing pecl-config for php-${phpVersion}";
-  exit 1;
+  $(which php${phpVersion}) \
+    -c ~/.pearrc-php${phpVersion} \
+    -C -q -d include_path=/usr/share/php${phpVersion} \
+    -d date.timezone=UTC -d output_buffering=1 -d variables_order=EGPCS -d safe_mode=0 -d register_argc_argv="On" \
+    -d display_startup_errors="Off" \
+    /usr/share/php${phpVersion}/peclcmd.php "$@"
+
+  return $?
 }
 
-$(which pecl) channel-update pecl.php.net
+echo "Using php-${phpVersion}";
 
-export PHP_PEAR_PHP_BIN=php${phpVersion}
-$(which pecl) -d php_suffix=${phpVersion} $@
+_pecl config-set data_dir "${phpShared}/data" > /dev/null;
+_pecl config-set cfg_dir "${phpShared}/cfg" > /dev/null;
+_pecl config-set test_dir "${phpShared}/tests" > /dev/null;
+_pecl config-set www_dir "${phpShared}/www" > /dev/null;
+
+_pecl config-set php_ini "/etc/php/${phpVersion}/cli/php.ini" > /dev/null;
+_pecl config-set ext_dir "${phpLibPath}" > /dev/null;
+_pecl config-set bin_dir "/usr/bin/" > /dev/null;
+_pecl config-set php_bin "/usr/bin/php${phpVersion}" > /dev/null;
+
+_pecl config-set php_suffix "${phpVersion}" > /dev/null;
+
+declare -a peclArguments;
+peclArguments+=(-d cache_dir=/tmp/pear/php${phpVersion}/cache);
+peclArguments+=(-d php_suffix=${phpVersion});
+peclArguments+=(-d data_dir=${phpShared}/data);
+peclArguments+=(-d cfg_dir=${phpShared}/config);
+peclArguments+=(-d test_dir=${phpShared}/tests);
+peclArguments+=(-d www_dir=${phpShared}/www);
+
+peclArguments+=(-d php_ini=/etc/php/${phpVersion}/cli/php.ini);
+peclArguments+=(-d ext_dir=${phpLibPath});
+peclArguments+=(-d bin_dir=/usr/bin/);
+peclArguments+=(-d php_bin=/usr/bin/php${phpVersion});
+peclArguments+=(-d php_suffix=${phpVersion});
+
+_pecl channel-update pecl.php.net;
+
+_pecl ${peclArguments[@]} $@
+
+cacheDir=$(pecl config-get cache_dir);
+rm -rf "${cacheDir}/*";
+
+tmpDir=$(pecl config-get temp_dir);
+rm -rf "${cacheDir}/*";
+
 exit $?
