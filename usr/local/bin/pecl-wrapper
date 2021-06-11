@@ -1,14 +1,14 @@
 #!/bin/bash
 
-if [[ $UID -ne 0 ]];
-then
-  echo "Root permissions required!";
-  exit 1;
-fi
+#if [[ $UID -ne 0 ]];
+#then
+#  echo "Root permissions required!";
+#  exit 1;
+#fi
 
 base=$(basename $0);
 phpVersion=${base//[!0-9\.]/};
-phpLibPath=$(php${phpVersion} -i | grep extension_dir | cut -d '>' -f 2 | cut -d '=' -f 1);
+phpLibPath=$(php${phpVersion} -i | grep -E '(^|\n)extension_dir' | cut -d '>' -f 2 | cut -d '=' -f 1 | tr -d '[:space:]');
 
 if [[ -z "${phpVersion}" ]];
 then
@@ -22,14 +22,21 @@ then
   exit 1;
 fi
 
+echo "Using php-${phpVersion}";
+
+sudo pecl config-set data_dir "/usr/share/php${phpVersion}/data" > /dev/null && \
+sudo pecl config-set cfg_dir "/usr/share/php${phpVersion}/cfg" > /dev/null && \
 sudo pecl config-set php_ini "/etc/php/${phpVersion}/cli/php.ini" > /dev/null && \
 sudo pecl config-set ext_dir "${phpLibPath}" > /dev/null && \
-#sudo pecl config-set bin_dir "/usr/bin/" > /dev/null && \
-sudo pecl config-set php_bin "/usr/bin/php${phpVersion}/" > /dev/null && \
-sudo pecl config-set php_suffix "${phpVersion}/" > /dev/null || {
+sudo pecl config-set bin_dir "/usr/bin/" > /dev/null && \
+sudo pecl config-set php_bin "/usr/bin/php${phpVersion}" > /dev/null && \
+sudo pecl config-set php_suffix "${phpVersion}" > /dev/null || {
   echo "Error preparing pecl-config for php-${phpVersion}";
   exit 1;
 }
 
-pecl $@
+$(which pecl) channel-update pecl.php.net
+
+export PHP_PEAR_PHP_BIN=php${phpVersion}
+$(which pecl) -d php_suffix=${phpVersion} $@
 exit $?
