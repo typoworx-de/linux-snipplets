@@ -1,4 +1,7 @@
 #!/bin/bash
+declare -a _permitted_dirs=('/var/www');
+
+path=$(realpath ${1});
 
 if [[ -z $@ ]];
 then
@@ -9,8 +12,7 @@ then
 fi
 
 # Security check to avoid any blown system-permissions!
-# Avoid f.e. incidently manipulation /usr/{bin,sbin}
-if [[ ! " ${1}" =~ (^| )${_permitted_dirs[@]}.*?( |$) ]];
+if [[ ! " ${path}" =~ (^| )${_permitted_dirs[@]}.*?( |$) ]];
 then
   echo -e "\e[91mERROR: The given path does not match the safe permissions-policy!\e[0m";
   echo "Path: ${1}";
@@ -24,12 +26,17 @@ then
 fi
 
 echo "Adding $SUDO_USER";
-setfacl -Rm g:$SUDO_USER:rwx $@;
-setfacl -Rm g:www-data:rwx $@;
+chown -R www-data:www-data ${path};
+
+setfacl -Rm u:$SUDO_USER:rwx ${path};
+setfacl -Rm g:$SUDO_USER:rwx ${path};
+setfacl -Rm g:www-data:rwx ${path};
+
+find ${path} -type d -exec chmod a=rwx,g+s {}; chmod \;
+find ${path} -type f -exec chmod a=rw,g+s {}; chmod \;
 
 if [[ $@ != *"-q"* ]];
 then
   echo;
-  getfacl ${1};
+  getfacl ${path};
 fi
-
