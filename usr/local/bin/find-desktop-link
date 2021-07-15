@@ -1,0 +1,7 @@
+#!/bin/bash
+
+find \
+  ~/.local/share/applications/ \
+  /usr/share/applications/ \
+  -type f -iname "*${@}*.desktop" \
+;
