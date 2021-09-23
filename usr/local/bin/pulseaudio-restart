@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# This script will help if pulseaudio/alsa aren't working as expected
+
+if [[ "$USER" == 'root' ]];
+then
+  echo "This should not be used by root!";
+  exit 1;
+fi
+
+function restartPulseAudio()
+{
+  sudo alsa force-reload;
+
+  # pulseaudio runs in user-land context
+  pulseaudio --kill;
+  pulseaudio --start;
+  exit $?
+}
+
+function restartChromeAudioService()
+{
+  # find a sub-process of chrome named '.AudioService'
+  ps --forest -o pid,cmd -g $(pidof chrome) | grep '.AudioService' | cut -f1 -d' ' | while read pid;
+  do
+    kill -quit $pid;
+  done
+}
+
+
+if [[ -x $(which notify-send) ]];
+then
+   notify-send "Running $(basename $0)" --icon=dialog-information;
+fi
+
+
+restartPulseAudio;
+restartChromeAudioService;
+
+status=$?;
+
+#if [[ "${status}" -eq 0 ]];
+#then
+#  pacmd set-sink-port 0 hdmi-output;
+#fi
+
+exit ${status};
