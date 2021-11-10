@@ -1,0 +1,75 @@
+#!/bin/bash
+_WORKDIR='';
+_DIRUSER='';
+_CMD=$SHELL;
+
+usage()
+{
+  echo "-- Syntax --";
+  echo "Sudir is like 'sudo' by automatically using the given directory-owner, like this:"
+  echo -e "$> sudir [Path] [command / arguments]\n";
+  exit 1;
+}
+
+if [[ $@ =~ '-h' ]] || [[ $@ =~ '--help' ]];
+then
+  usage;
+fi
+
+if [[ ${#} == 1 ]];
+then
+  if [[ -d "${1}" ]];
+  then
+    _WORKDIR="${1}";
+  else
+    _WORKDIR=$(pwd);
+    _CMD="${@}";
+  fi
+else
+  if [[ -d "${1}" ]];
+  then
+    _WORKDIR="${1}";
+    _CMD="${@: 2}";
+  else
+    _WORKDIR=$(pwd);
+    _CMD="${@}";
+  fi
+fi
+
+if [[ ! -z "${_WORKDIR}" ]];
+then
+  _WORKDIR=$(realpath "${_WORKDIR}");
+  _DIRUSER=$(stat -c '%G' "${_WORKDIR}");
+else
+  echo "Error: No Workdir given!"
+  exit 1;
+fi
+
+read -r -a cmd <<< "${_CMD}";
+
+_CMD=${cmd[0]};
+_ARGS='';
+_SHELL_ARGS='';
+
+if [[ -f $(which sudir-shell) ]];
+then
+  _SHELL=$(which sudir-shell);
+else
+  _SHELL='/bin/bash';
+fi
+
+if [[ ${#cmd[@]} > 0 ]];
+then
+  _ARGS="'${cmd[@]:1}'";
+  _SHELL_ARGS+="-s ${_SHELL} ${_CMD} -- ${_ARGS}";
+else
+  _SHELL_ARGS+="-s ${_SHELL}";
+fi
+
+if [[ ! -z "${_DIRUSER}" ]] && [[ "${_DIRUSER}" != "$USER" ]];
+then
+  #sudo -S $(which askpass pkexec | head -n 1) su ${_DIRUSER} ${_SHELL_ARGS};
+  sudo su ${_DIRUSER} ${_SHELL_ARGS};
+else
+  $_CMD;
+fi

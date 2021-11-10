@@ -1,0 +1,96 @@
+#!/bin/bash
+
+#------------------------------------------------------------------------------------------------
+# This is a wrapper for git and use of customer-specific host-prefixes for ~/.ssh/config setup
+#  
+# f.e. GIT-Remote: git@bitbucket.org:my-customer/foo.bar-repository
+# would become:
+#      GIT-Remote: git@my-customer.bitbucket.org:my-customer/foo.bar-repository
+#------------------------------------------------------------------------------------------------
+
+_gitBinary=$(which -a git | tail -n 1);
+_log=$(basename $0).log;
+
+notify-send -t 15 "" "Logging to ${_log}";
+
+function executeGit()
+{
+#-   notify-send -t 15 "$(basename ${0})" "Calling ${_gitBinary} ${@}";
+#   echo "Exec ${_gitBinary} ${@}" >> ${_log};
+
+   ${_gitBinary} "$@";
+   exitCode=$?;
+
+#-   notify-send -t 15 "$(basename ${0})" "Exit-Code$ ${exitCode}";
+#   echo "Exit-Code ${exitCode}" >> ${_log};
+
+   exit ${exitCode};
+}
+
+if [[ ${1} != 'clone' ]];
+then
+  executeGit "$@";
+  exit $?;
+fi
+
+originalRemoteUri='';
+remoteUriIndex=0;
+declare -a args=("$@");
+for arg in "${@}";
+do
+   if [[ $(echo $arg | grep -Ec '[a-zA-Z]+\@[a-zA-Z]+\.[a-zA-Z]{2,4}\:') > 0 ]];
+   then
+   	originalRemoteUri=$arg;
+	break;
+   fi
+
+   remoteUriIndex=$((remoteUriIndex + 1));
+done
+
+if [[ -z ${originalRemoteUri} ]];
+then
+   #-echo 'Unable to find Remote-URI: skipping over to git-client';
+   #-${_gitBinary} "$@";
+   executeGit "$@";
+   exit $?;
+fi
+
+remoteUser=$(echo ${originalRemoteUri} | grep -Eo '^([^\@]+)');
+remoteUri=$(echo ${originalRemoteUri} | sed -E 's/[^\@]*([^\@\/]+)//' | sed 's/^[\@ ]*//');
+remoteHost=$(echo ${remoteUri} | grep -Eo '^([^\:]+)');
+remotePrefix=$(echo ${remoteUri} | cut -d":" -f 2 | cut -d'/' -f 1);
+remoteRepository=$(echo ${remoteUri} | sed -E 's/^[^\:]+\://');
+
+customRemoteUri="${remoteUser}@${remotePrefix}.${remoteHost}:${remoteRepository}";
+
+#-echo "User: ${remoteUser}";
+#-echo "Remote: ${remoteUri}";
+#-echo "Host: ${remoteHost}";
+#-echo "Prefix: ${remotePrefix}"
+#-echo "Final: ${customRemoteUri}";
+
+# Apply new RemoteUri to $@ Arguments
+args[ $remoteUriIndex ]=$customRemoteUri;
+
+#echo "Index: ${remoteUriIndex}";
+#echo "New Args: ${args[@]}";
+#exit;
+
+#echo -e "Calling GIT with modified hostname:\n> ${customRemoteUri}\n";
+#echo -e "Full-CMD: ${_gitBinary} ${args[@]}\n";
+
+#notify-send -t 15 "$(basename ${0})" "Calling ${_gitBinary} ${args[@]}";
+
+#${_gitBinary} "${args[@]}";
+executeGit "${args[@]}";
+exitCode=$?;
+
+#notify-send -t 15 "$(basename ${0})" "Exit-Code$ ${exitCode}";
+
+#if [[ $exitCode != 0 ]];
+#then
+#   echo -e "Error (Exit-Code ${exitCode})\n-> ${_gitBinary} ${args[@]}"
+#   notify-send -t 5 "$(basename ${0}) Error (Exit-Code ${exitCode})" "Error checking out ${_gitBinary} ${args[@]}"
+#fi
+
+exit ${exitCode};

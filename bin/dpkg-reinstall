@@ -1,0 +1,50 @@
+#!/bin/bash
+
+if [[ -z $@ ]];
+then
+   echo "Syntax: $(basename $0) '[string or regex to grep packages]'";
+   exit 1;
+fi
+
+echo "Searching for packages matching '$1'";
+echo "----------------------------------------";
+dpkg --list | cut -d " " -f 3 | grep -E "${1}";
+echo "----------------------------------------";
+echo;
+read -p "Please confirm reinstall? " -n 1 -r confirm
+if [[ $confirm =~ ^[^yY]$ ]] || [[ -z $confirm ]];
+then
+        echo "Skipping!";
+        exit 1;
+fi
+
+if [[ $EUID -ne 0 ]]; then
+   echo -e "\n\nFor processing this script must be run as root or with sudo";
+   exit 1
+fi
+
+apt-get clean && \
+apt-get autoclean && \
+dpkg --list | cut -d " " -f 3 | grep -E "$1" | \
+xargs | while read -r packages;
+do
+#  sudo dpkg -r --force-depends ${packages};
+   (cd /var/cache/apt/archives; sudo apt-get download ${packages});
+
+   for singlePackage in ${packages};
+   do
+     sudo find /var/cache/apt/archives -type f -iname "*${singlePackage//:/*}*" -exec dpkg -x {} / \;
+   done
+
+   sudo apt-get -o Dpkg::Options::="--force-overwrite,--force-confnew,--force-confask" -y install --reinstall --purge --no-install-recommends ${packages} \
+   || sudo apt-get install -fy;
+done
+
+#xargs dpkg -r --force-depends \
+#xargs sudo apt-get -o Dpkg::Options::="--force-overwrite,--force-confnew,--force-confask" -y install --reinstall --no-install-recommends;
+
+#xargs sudo apt-get -o Dpkg::Options::="--force-overwrite" -y install -f --reinstall --no-install-recommends;
+#xargs sudo apt-get -o Dpkg::Options::="--force-overwrite,--force-confnew,--force-confask,confnew,confmiss" -y install --reinstall --no-install-recommends;
+#xargs sudo apt-get -o Dpkg::Options::="--force-overwrite" -o Dpkg::Options::="--force-confnew,--force-confask,confnew,confmiss"
+#dpkg --list | cut -d " " -f 3 | grep -E "$1" | xargs sudo apt-get -o Dpkg::Options::="--force-overwrite" -o Dpkg::Options::="--force-confnew,--force-confask,confnew,confmiss" \
+# -y install --reinstall --no-install-recommends;

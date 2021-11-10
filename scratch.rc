@@ -1,0 +1,8 @@
+#!/bin/bash 
+
+source /usr/local/scratches/.scratch-root/scratch.config;
+source ${scratchGitRoot}/scratch.lib.sh;
+source ${scratchGitRoot}/scratch.aliases;
+
+export PATH=${scratchGitRoot}/usr/local/bin:$PATH
+alias scratch="scratch-git $@"

@@ -1,0 +1,10 @@
+alias artisan="${scratchRoot}/bin/artisan-wrapper"
+alias composer="${scratchRoot}/bin/composer-wrapper"
+
+alias pecl7.0="${scratchRoot}/bin/pecl7.0"
+alias pecl7.1="${scratchRoot}/bin/pecl7.1"
+alias pecl7.2="${scratchRoot}/bin/pecl7.2"
+alias pecl7.4="${scratchRoot}/bin/pecl7.4"
+alias pecl8.0="${scratchRoot}/bin/pecl8.0"
+
+alias setfacl-www-data="sudo ${scratchRoot}/bin/setfacl-www-data"

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+trap ctrl_c INT
+
+function ctrl_c()
+{
+  echo "Skipping!";
+  exit 1;
+}
+
+function checkMysqlConfig()
+{
+  if [[ $(mysql $@ -sNe 'SHOW VARIABLES LIKE "innodb_file_per_table"' | sed 's/\t/,/g' | cut -d',' -f2) != 'ON' ]];
+  then
+    echo "Please re-configure MySQL: 'innodb_file_per_table = 1'";
+    exit 1;
+  fi
+}
+
+
+query='SELECT CONCAT("ALTER ", "TABLE \`", `TABLE_SCHEMA`, "\`.\`", `table_name`, "\` ENGINE=InnoDB;")';
+query+='FROM INFORMATION_SCHEMA.tables ';
+query+='WHERE table_type="BASE TABLE" AND TABLE_SCHEMA!="mysql" AND engine IN("MyISAM", "InnoDB")';
+
+mysql $@ -Ne "${query};" | while IFS= read -r alterQuery
+do
+  echo "Executing: '${alterQuery}'";
+  mysql $@ -sNe "${alterQuery}" || echo "Query failed: '${alterQuery}'";
+done
+
+echo "Done";

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+cronName=$1;
+
+for cronfile in /etc/cron.{d,hourly,daily,monthly,weekly}/$cronName;
+do
+  if [[ ! -f $cronfile ]];
+  then
+	continue;
+  fi
+
+  echo "Disabling $cronfile";
+  sudo mv $cronfile $cronfile.disabled;
+  sudo chmod -x $cronfile.disabled;
+  sudo chattr +i $cronfile.disabled;
+done
