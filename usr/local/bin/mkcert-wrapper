@@ -27,6 +27,12 @@ then
   chmod +x ${MKCERT_BIN} || exit 1;
 fi
 
+if [[ $@ = *'-cert-file'* ]];
+then
+  $MKCERT_BIN $@
+  exit $?
+fi
+
 if [[ "$@" = *-help* ]];
 then
   ${MKCERT_BIN} -help;

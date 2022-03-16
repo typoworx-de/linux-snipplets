@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# find a sub-process of chrome named '.AudioService' or '.VideoCaptureService'
+ps --forest -o pid,cmd -g $(pidof chrome) | grep -E '\.(VideoCapture|Audio)Service' | cut -f2 -d' ' | while read pid;
+do
+  [[ -z "${pid}" ]] || kill -quit $pid;
+done

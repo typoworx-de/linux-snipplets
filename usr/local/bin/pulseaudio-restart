@@ -8,21 +8,38 @@ fi
 
 function restartPulseAudio()
 {
-  sudo alsa force-reload;
+  #sudo alsa force-reload;
 
   # pulseaudio runs in user-land context
-  pulseaudio --kill;
+  # systemctl restart pulseaudio.service \
+  # systemctl --user restart pulseaudio.service \
+  # systemctl --user restart pulseaudio.socket
+
+  pulseaudio --kill && killall -9 pulseaudio;
   pulseaudio --start;
+  sudo alsa force-reload;
+
   exit $?
 }
 
 function restartChromeAudioService()
 {
-  # find a sub-process of chrome named '.AudioService'
-  ps --forest -o pid,cmd -g $(pidof chrome) | grep '.AudioService' | cut -f1 -d' ' | while read pid;
+  ps --forest -o pid,cmd -g $(pidof chrome) | grep -E '\.(VideoCapture|Audio)Service' | cut -f2 -d' ' | while read pid;
   do
     kill -quit $pid;
   done
+
+  # find a sub-process of chrome named '.AudioService'
+  #ps --forest -o pid,cmd -g $(pidof chrome) | grep '.AudioService' | cut -f1 -d' ' | while read pid;
+  #do
+  #  kill -quit $pid;
+  #done
+
+  # find a sub-process of chrome named '.VideoCaptureService'
+  #ps --forest -o pid,cmd -g $(pidof chrome) | grep '.VideoCaptureService' | cut -f1 -d' ' | while read pid;
+  #do
+  #  kill -quit $pid;
+  #done
 }
 
 
@@ -33,6 +50,7 @@ fi
 
 
 restartPulseAudio;
+sleep 1;
 restartChromeAudioService;
 
 status=$?;

@@ -1,9 +1,9 @@
 #!/bin/bash
 PWD=$(pwd)
 PHP_BINARY=$(which php7.2 php7.4 php8.0| head -n1);
-COMPOSER_BINARY=$(which composer2.phar);
+COMPOSER_BINARY=$(which composer1.phar);
 
-[[ -z "${COMPOSER_BINARY}" ]] && COMPOSER_BINARY=$(dirname $0)/composer2.phar
+[[ -z "${COMPOSER_BINARY}" ]] && COMPOSER_BINARY=$(dirname $0)/composer1.phar
 [[ -f "${COMPOSER_BINARY}" && ! -x "${COMPOSER_BINARY}" ]] && chmod +x ${COMPOSER_BINARY}
 
 echo;

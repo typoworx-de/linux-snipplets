@@ -98,14 +98,22 @@ function build()
   ./configure ${configureArgs} || { echo "Configure failed!"; exit 1; } && \
   make -j 4 ${makeArgs} || { echo "Make failed!"; exit 1; } && {
     #if [[ ! -f "${_path}/modules/${basename}*.so" ]];
-    if ls "${_path}/modules/${basename}*.so" 1> /dev/null 2>&1;
+    #if ls "${_path}/modules/${basename}*.so" 1> /dev/null 2>&1;
+    #then
+    #  echo "Error cannot determine PHP-Extension library to install (tried: ${_path}/modules/${basename}.so)";
+    #  exit 1;
+    #fi
+
+    module=$(find ${_path} -iname "${basename}.so" -print -quit);
+
+    if [[ -z "${module}" ]];
     then
       echo "Error cannot determine PHP-Extension library to install (tried: ${_path}/modules/${basename}.so)";
       exit 1;
     fi
 
-    echo "Installing ... cp ${_path}/modules/${basename}*.so ${phpLibPath}/${basename}.so";
-    sudo cp ${_path}/modules/${basename}*.so ${phpLibPath}/${basename}.so;
+    echo "Installing ... cp ${module[@]} ${phpLibPath}/${basename}.so";
+    sudo cp ${module[@]} ${phpLibPath}/${basename}.so;
 
     make clean;
     make distclean;
