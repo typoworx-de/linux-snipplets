@@ -37,5 +37,6 @@ docker run -d \
   --name portainer --restart always \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v ${_portainerVolume}:/data ${_releaseBranch} \
+  --no-strong-password \
   --admin-password=${_cryptPw} \
 ;
