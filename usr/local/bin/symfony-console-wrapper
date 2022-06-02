@@ -1,0 +1,57 @@
+#!/bin/bash
+PWD=$(pwd)
+PHP_BINARY=$(which php7.2 php7.4 php8.0| head -n1);
+
+echo;
+
+if [[ ! -f "${PWD}/bin/console" ]];
+then
+	echo "This doesn't look like a Symfony-Project (can't find 'bin/console')!";
+	exit 1;
+fi
+
+if [[ ! -x $(which jq) ]];
+then
+	echo "jq binary required!";
+        exit 1;
+fi
+
+if [[ -r "${PWD}/composer.json" ]];
+then
+        echo "Determining PHP-Version from composer.json";
+	COMPOSER_PHP_VERSION=$(jq -r '[.platform.php|tostring]' ${PWD}/composer.json | grep -Eo "[0-9\.]+");
+
+	if [[ -z "$COMPOSER_PHP_VERSION" ]];
+	then
+        	COMPOSER_PHP_VERSION=$(jq -r '[.config.platform.php|tostring]' ${PWD}/composer.json | grep -Eo "[0-9\.]+");
+	fi
+
+	if [[ -z "$COMPOSER_PHP_VERSION" ]];
+	then
+		COMPOSER_PHP_VERSION=$(jq -r '[.require.php|tostring]' ${PWD}/composer.json | grep -Eo "[0-9\.]+");
+	fi
+
+	COMPOSER_PHP_VERSION_ARRAY=( ${COMPOSER_PHP_VERSION//./ } )
+	DESIRED_MAJOR_VERSION=${COMPOSER_PHP_VERSION_ARRAY[0]}.${COMPOSER_PHP_VERSION_ARRAY[1]};
+
+	echo "Searching PHP ${DESIRED_MAJOR_VERSION}";
+	PHP_BINARY=$(ls /usr/bin/php${DESIRED_MAJOR_VERSION}* /usr/local/bin/php${DESIRED_MAJOR_VERSION}* 2> /dev/null | head -n1)
+
+	if [[ -z "${PHP_BINARY}" ]];
+	then
+		echo "Error: Unable to find php${DESIRED_MAJOR_VERSION}.* binary!";
+		exit 1;
+	fi
+fi
+
+echo "Using ${PHP_BINARY} and ${COMPOSER_BINARY} $@";
+
+args="$@"
+
+[[ -z "${SUDO_USER}" ]] && {
+	${PHP_BINARY} ${PWD}/bin/console ${args}
+} || {
+	su ${SUDO_USER:-$USER} -pc "${PHP_BINARY} ${PWD}/bin/console ${args}"
+}
+
+exit $?

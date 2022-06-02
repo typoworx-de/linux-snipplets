@@ -1,6 +1,12 @@
 #!/bin/bash
 PHP_BINARY=$(which php | head -n1);
 
+if [[ ! -f ${PWD}/artisan ]];
+then
+  echo "This dosn't look like a PHP-Project providing artisan in ${PWD}";
+  exit 1
+fi
+
 if [[ ! -x $(which jq) ]];
 then
         echo "jq binary required!";
