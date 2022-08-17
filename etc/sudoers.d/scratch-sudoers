@@ -1,2 +1,2 @@
-%sudo		 ALL = NOPASSWD: /usr/local/scratches/.scratch-root/usr/local/bin/scratch-sudo
-%scratch-sudoers ALL = NOPASSWD: /usr/local/scratches/.scratch-root/usr/local/bin/scratch-sudo
+%sudo		 ALL = NOPASSWD: /usr/local/scratches/usr/local/bin/scratch-sudo
+%scratch-sudoers ALL = NOPASSWD: /usr/local/scratches/usr/local/bin/scratch-sudo
