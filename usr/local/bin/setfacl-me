@@ -1,0 +1,3 @@
+#!/bin/sh
+
+sudo setfacl -Rm u:$USER:rwx $@

@@ -1,0 +1,11 @@
+[Unit]
+Description=Webcam-Stream-Mux
+
+[Service]
+Type=simple
+ExecStartPre=/sbin/modprobe v4l2loopback devices=4 exclusive_caps=1 video_nr=2,3,4 card_label="webcam-mux-1,wecbam-mux-2,webcam-mux-3"
+ExecStart=/usr/bin/ffmpeg -loglevel quiet -stats -f video4linux2 -i /dev/video0 -codec copy -f v4l2 /dev/video2 -codec copy -f v4l2 /dev/video3 -codec copy -f v4l2 /dev/video4 -codec copy -f v4l2 /dev/video5
+ExecStop=/sbin/modprobe -r v4l2loopback
+
+[Install]
+WantedBy=multi-user.target
