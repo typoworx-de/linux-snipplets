@@ -2,6 +2,7 @@
 PWD=$(pwd)
 PHP_BINARY=$(which php7.2 php7.4 php8.0| head -n1);
 COMPOSER_BINARY=$(which composer2.phar);
+WWW_USER='www-data'
 
 [[ -z "${COMPOSER_BINARY}" ]] && COMPOSER_BINARY=$(dirname $0)/composer2.phar
 [[ -f "${COMPOSER_BINARY}" && ! -x "${COMPOSER_BINARY}" ]] && chmod +x ${COMPOSER_BINARY}
@@ -52,7 +53,8 @@ sudo update-alternatives --set php ${PHP_BINARY}
 echo "Using ${PHP_BINARY} and ${COMPOSER_BINARY} $@";
 
 args="$@"
-su ${SUDO_USER:-$USER} -pc "php ${COMPOSER_BINARY} ${args}"
 
+#su ${USER} -pc "php ${COMPOSER_BINARY} ${args}"
+sudo su ${WWW_USER:-$USER} -pc "php ${COMPOSER_BINARY} ${args}"
 
 exit $?

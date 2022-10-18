@@ -9,6 +9,7 @@ function xcat()
   fInfo=$(file "$1");
 
   method='';
+  args='';
   methodInfo='';
 
   if [[ "${fInfo}" == *"gzip"* ]];
@@ -19,6 +20,10 @@ function xcat()
   then
     method='bzcat';
 #    methodInfo='bzip2';
+  elif [[ "${fInfo}" == *"zip"* ]];
+  then
+    method='unzip';
+    args='-p';
   elif [[ "${fInfo}" == *"ASCII"* ]];
   then
     method='cat';
@@ -35,7 +40,7 @@ function xcat()
     return 1;
   fi
 
-  $(which "${method}") "$1" >&1;
+  $(which "${method}") "${args}" "$1" >&1;
 
   return $?;
 }

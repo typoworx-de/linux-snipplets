@@ -1,0 +1,14 @@
+#!/bin/bash
+echo "Running Apache2 Preflight"
+
+apache2ctl -t || exit $?
+
+result=($(find /etc/apache2/sites-enabled/ -type f ! -iname '*.conf'))
+
+[[ "${#result[@]}" -eq 0 ]] || {
+  echo
+  echo "Warning found vHost-Files without '.conf' suffix!"
+  exit 1
+}
+
+exit 0

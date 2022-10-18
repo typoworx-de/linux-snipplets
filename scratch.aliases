@@ -1,3 +1,5 @@
+export SCRATCH_ROOT="${scratchRoot}"
+
 alias scratch-sudo="sudo ${scratchBin}/scratch-sudo"
 alias kernel-cleanup="scratch-sudo ${scratchBin}/kernel-cleanup"
 alias php-build-ext="scratch-sudo ${scratchBin}/php-build-ext"
@@ -7,9 +9,9 @@ alias phpunit7="${scratchBin}/phpunit-7.5.phar"
 alias phpunit="${scratchBin}/phpunit-7.5.phar"
 
 alias artisan="${scratchBin}/artisan-wrapper"
-alias symfony-console="scratch-sudo ${scratchBin}/symfony-console-wrapper"
-alias composer="scratch-sudo ${scratchBin}/composer-wrapper"
-alias composer1="scratch-sudo ${scratchBin}/composer1-wrapper"
+alias symfony-console="${scratchBin}/symfony-console-wrapper"
+alias composer="${scratchBin}/composer-wrapper"
+alias composer1="${scratchBin}/composer1-wrapper"
 
 alias pecl7.0="${scratchBin}/pecl7.0"
 alias pecl7.1="${scratchBin}/pecl7.1"
@@ -17,5 +19,5 @@ alias pecl7.2="${scratchBin}/pecl7.2"
 alias pecl7.4="${scratchBin}/pecl7.4"
 alias pecl8.0="${scratchBin}/pecl8.0"
 
-alias setfacl-www-data="scratch-sudo ${scratchBin}/setfacl-www-data"
+#alias setfacl-www-data="scratch-sudo ${scratchBin}/setfacl-www-data"
 alias openssl-download-certs="scratch-sudo ${scratchBin}/openssl-download-certs"
