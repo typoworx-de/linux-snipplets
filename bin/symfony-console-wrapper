@@ -49,9 +49,9 @@ echo "Using ${PHP_BINARY} and ${COMPOSER_BINARY} $@";
 args="$@"
 
 [[ -z "${SUDO_USER}" ]] && {
-	${PHP_BINARY} ${PWD}/bin/console ${args}
+	${PHP_BINARY} ${PWD}/bin/console ${args};
+	exit $?
 } || {
-	su ${SUDO_USER:-$USER} -pc "${PHP_BINARY} ${PWD}/bin/console ${args}"
+	su ${SUDO_USER:-$USER} -pc "${PHP_BINARY} ${PWD}/bin/console ${args}";
+	exit $?
 }
-
-exit $?
