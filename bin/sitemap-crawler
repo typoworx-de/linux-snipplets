@@ -1,0 +1,81 @@
+#!/bin/bash
+_silent=0
+_runtime=0
+
+[[ -z "$@" ]] && {
+  echo "Syntax $(basename $0) {flags} [Site-URL or URL to sitemap.xml]";
+  echo;
+  echo "Flags:";
+  echo "-s|--silent	silent-mode";
+  exit 1;
+}
+
+[[ "$@" =~ '-s' || "$@" =~ '--silent' ]] && {
+  _silent=1;
+}
+[[ "$@" =~ '--runtime' ]] && {
+  _runtime=1;
+}
+
+uri="${@: -1}";
+[[ "${uri}" =~ "/sitemap.xml" ]] || {
+  uri="${uri}/sitemap.xml";
+}
+
+function runtime()
+{
+  [[ "${_runtime}" == 1 ]] || return;
+
+  echo "-----------"
+  echo "Runtime:"
+  times
+  echo "-----------"
+}
+trap runtime EXIT
+
+
+# writes any message directly to TTY (not stdout!)
+# @param string
+message()
+{
+  [[ "${_silent}" == 0 ]] || return;
+  stdbuf -oL echo -e "$@" > /dev/tty;
+}
+
+# @param url
+function urldecode() { : "${*//+/ }"; echo -e "${_//%/\\x}" | perl -n -mHTML::Entities -e 'print HTML::Entities::decode_entities($_);'; }
+
+# @param url
+fetchSitemap()
+{
+  local uri="${1}"
+  message "Fetching: ${uri}\n";
+
+  local sitemap=$(<<<2 curl -L --silent -H "\"Accept: text/xml,application/xml\"" "${uri}");
+
+  local -a allURIs=();
+  local -a URIs=( $(grep -e loc <<< "${sitemap}" | sed 's|<loc>\(.*\)<\/loc>$|\1|g') );
+  local sitemapURI;
+
+  [[ $(grep -c '<sitemapindex' <<< "${sitemap}") > 0 ]] && {
+    message "Parsing Sitemap-Index";
+    message "Found ${#URIs[@]} Sitemaps in ${uri} \n";
+
+    for sitemapURI in "${URIs[@]}";
+    do
+      sitemapURI=$(urldecode "${sitemapURI}");
+      local -a fetchURLs=($(fetchSitemap "${sitemapURI}"));
+      allURIs+=( "${fetchURLs[@]}" )
+    done
+  } || {
+    echo "${URIs[@]}";
+    return;
+  }
+
+
+  message "Found ${#allURIs[@]} URLs in sitemap from: ${uri}";
+  echo "${allURIs[@]}";
+}
+
+
+printf "%s\n" $(fetchSitemap "${uri}")
