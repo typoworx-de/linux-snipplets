@@ -1,0 +1,4 @@
+#!/bin/sh
+
+echo "- - -" | tee /sys/class/scsi_host/host*/scan
+echo 1 | tee /sys/class/scsi_disk/2\:0\:*/device/rescan
