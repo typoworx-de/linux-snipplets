@@ -1,6 +1,26 @@
 #!/bin/bash
 
-# usage:
-# dpkg-clean-rc "linux-(image|modules|headers)"
+declare -a removeablePackages=($(dpkg --list | grep -E "${@:-.+}" | grep "^rc" | cut -d " " -f 3))
 
-dpkg --list | grep -E "${@:-.+}" | grep "^rc" | cut -d " " -f 3 | xargs dpkg --purge
+[[ "${#removeablePackages[@]}" == 0 ]] && {
+  echo "No packages found.";
+  echo;
+  exit 0;
+}
+
+[[ " $@ " =~ ' -i ' || ! " $@ " =~ ' -y ' ]] && {
+  echo "Interactive Mode"
+  tmpfile=$(mktemp /tmp/$(basename "$0")."$$-XXX")
+  echo -e ${removeablePackages[@]/#/\\n} > ${tmpfile}
+
+  ${EDITOR:-vi} ${tmpfile};
+
+  read -p "Are you sure to remove them? [y/n] " -n 1 -r
+  echo;
+  [[ ! $REPLY =~ ^[Yy]$ ]] && {
+    echo "Skipped by user!";
+    exit 1;
+  }
+}
+
+dpkg --purge <<< ${removeablePackages[@]}
