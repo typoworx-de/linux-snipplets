@@ -14,4 +14,6 @@ OLD=$(ls -tr /boot/vmlinuz-* | head -n -2 | cut -d- -f2- |
 if [ -n "$OLD" ]; then
     apt-get -qy remove --purge $OLD
 fi
+
 apt-get -qy autoremove --purge
+[ $(which 'dpkg-clean-rc') ] && dpkg-clean-rc "linux-(image|modules|headers)"
