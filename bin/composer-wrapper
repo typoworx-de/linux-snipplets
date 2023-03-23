@@ -3,7 +3,7 @@ PWD=$(pwd)
 PHP_BINARY=$(which php7.2 php7.4 php8.0| head -n1);
 COMPOSER_BINARY=$(which composer2.phar);
 
-DIR_USER=$(stat '%U' ${PWD});
+DIR_USER=$(stat --printf=%U ${PWD});
 WWW_USER=${DIR_USER:-'www-data'};
 
 [[ -z "${COMPOSER_BINARY}" ]] && COMPOSER_BINARY=$(dirname $0)/composer2.phar
@@ -37,6 +37,11 @@ then
 
 	echo "Searching PHP ${DESIRED_MAJOR_VERSION}";
 	PHP_BINARY=$(ls /usr/bin/php${DESIRED_MAJOR_VERSION}* /usr/local/bin/php${DESIRED_MAJOR_VERSION}* 2> /dev/null | head -n1)
+
+	if [[ -z "${PHP_BINARY}" ]];
+	then
+		PHP_BINARY=$(which php${DESIRED_MAJOR_VERSION} 2> /dev/null | head -n1 )
+        fi
 
 	if [[ -z "${PHP_BINARY}" ]];
 	then

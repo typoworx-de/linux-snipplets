@@ -1,0 +1,26 @@
+#!/bin/bash
+
+echo "NOT READY YET"
+exit
+[[ -z "$@" ]] && {
+  echo "Syntax: $(basename $0) {search-term}";
+  exit 1;
+}
+
+declare -a images=()
+readarray -d \n -t images $(docker image ls | tail -n+2 | grep "${@}" | xargs -l1)
+
+echo ${images[@]}
+
+echo "Found ${#imags[@]} images matching '${@}':";
+[[ "${#imags[@]}" == 0 ]] && exit 1;
+
+echo
+cat <<< ${imags[@]}
+echo
+
+read -p "Delete? Are you sure! [yN] " -n 1 -r
+[[ ! $REPLY =~ ^[Yy]$ ]] && {
+  cat <<< ${imags[@]} | xargs -l1 | cut -d' ' -f3 | xargs -I{} echo RM {}
+  #xargs -I{} docker image rm {}
+}

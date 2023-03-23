@@ -1,0 +1,57 @@
+#!/bin/bash
+
+DPI=150;
+in=$(realpath "$1")
+pwd=$(dirname "${in}")
+file=$(basename "$1")
+file=${file%.*}
+out=${2:-"${file}.pdf"}
+#in=${target// /\ }
+
+if [[ -z "$@" ]];
+then
+	echo "Syntax: $(basename $0) {filename or path}";
+	exit 1
+fi
+
+#if [[ -d ${in} ]];
+#then
+#  for file in $(find "${in}" -type f -iname '*.pdf');
+#  do
+#    echo "File $file"
+#  done
+#fi
+
+if [[ ! -r "${in}" ]];
+then
+	echo "Cannot open file ${in}";
+	exit 1;
+fi
+
+echo "Processing ${in}";
+gs \
+	-q -dNOPAUSE -dQUIET -dBATCH -dSAFER \
+	-sDEVICE=pdfwrite \
+	-dCompatibilityLevel=1.3 \
+	-dPDFSETTINGS=/ebook \
+	-dEmbedAllFonts=true \
+	-dSubsetFonts=true \
+	-dAutoRotatePages=/None \
+	-dColorImageDownsampleType=/Bicubic \
+	-dColorImageResolution=$DPI \
+	-dGrayImageDownsampleType=/Bicubic \
+	-dGrayImageResolution=$DPI \
+	-dMonoImageDownsampleType=/Bicubic \
+	-dMonoImageResolution=$DPI \
+	-sOutputFile="${pwd}/${out}.tmp" \
+	"${in}" \
+&& {
+	[[ $(basename "${in}") == "${out}" ]] && {
+	   mv "${in}" "${in//.pdf/.bak.pdf}";
+        }
+
+	mv "${pwd}/${out}.tmp" "${pwd}/${out}";
+} || {
+	echo "Processing failed";
+	test -r "${pwd}/${out}.tmp" && rm "${pwd}/${out}.tmp";
+}

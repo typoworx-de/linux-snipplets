@@ -1,0 +1,13 @@
+#!/bin/bash
+
+node=$(hostname | tr '[[:upper:]]' '[[:lower:]]')'-builder';
+network='php-stack.local';
+
+docker buildx create \
+  --node "${node}" \
+  --driver docker-container \
+  --driver-opt network="${network:-host}" \
+  --config /etc/buildkit/buildkitd.toml \
+&& docker buildx inspect --bootstrap
+
+exit $?

@@ -1,0 +1,2 @@
+#!/bin/sh
+curl -s https://www.wieistmeineip.de/ | grep -sEom1 '([0-9]{2,3}\.){3}[0-9]{2,3}'

@@ -1,6 +1,6 @@
 #!/bin/bash
-#_releaseBranch='portainer/portainer';		# release-branch 1.x
-_releaseBranch='portainer/portainer-ce:latest';	# release-branch 2.x
+#_releaseBranch="portainer/portainer-ce:latest";
+_releaseBranch="portainer/portainer-ee:latest";
 
 _portainerVolume='portainer-data';
 
@@ -35,8 +35,9 @@ docker pull "${_releaseBranch}" && \
 docker run -d \
   -p 8000:8000 -p 9000:9000 \
   --name portainer --restart always \
+  --add-host host.docker.internal:host-gateway \
+  --add-host registry-api.php-stack.docker:host-gateway \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v ${_portainerVolume}:/data ${_releaseBranch} \
-  --no-strong-password \
   --admin-password=${_cryptPw} \
 ;

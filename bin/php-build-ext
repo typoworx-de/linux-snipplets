@@ -62,7 +62,7 @@ function build()
 
   if [[ -d "${_path}/.git" ]];
   then
-    release=$(git tag | tail -n 1);
+    release=$(git tag | sort | head -n 1);
 
     git reset --hard && \
     git checkout ${release} || {

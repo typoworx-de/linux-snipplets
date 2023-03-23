@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for pdf in $(find ${pwd} -type f -iname '*.pdf' -size +500k -print0)
+do
+  echo "${pdf//\n/x}"
+done

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+[[ -d $HOME/.thunderbird ]] || {
+  echo "No Thunderbird profile found in ${HOME}/.thunderbird!";
+  exit 1;
+}
+
+echo
+echo "Quitting all running thunderbird processes ..."
+killall thunderbird --wait
+killall /usr/lib/thunderbird/thunderbird --wait
+
+echo
+echo "Checking for left dead lock-files."
+find $HOME/.thunderbird/ -type f -iname '*.*lock' -delete
+
+[ -x /usr/bin/profile-cleaner ] && {
+  /usr/bin/profile-cleaner t
+}
+
+echo
+echo "Done."

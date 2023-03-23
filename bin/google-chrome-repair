@@ -1,0 +1,38 @@
+#!/bin/bash
+
+declare profileDir="$HOME/.config/google-chrome";
+
+[[ -d "${profileDir}" ]] || {
+  echo "No Google-Chrome profile found in ${profileDir}!";
+  exit 1;
+}
+
+echo
+echo "Quitting all running thunderbird processes ..."
+killall $(which google-chrome) --wait
+
+find "${profileDir}" \( -name "*Profile*" -o -name "Default" \) -type d -print0 | while IFS= read -r -d '' path;
+do
+   prefsFile=${path}/Preferences;
+
+   if [[ ! -f "$prefsFile" ]];
+   then
+        echo "Missing preferences file (${path})";
+        continue;
+   fi
+
+   echo "-----------------------------------------------------------";
+   echo "Profile: ${path}";
+   echo "-----------------------------------------------------------";
+   echo
+   echo "Checking for left dead lock-files."
+   find "${profileDir}" -type f -name 'SingletonLock' -delete
+
+   echo "Running profile-cleaner ..."
+   [ -x /usr/bin/profile-cleaner ] && {
+     /usr/bin/profile-cleaner gc -p "${profileDir}"
+   }
+done
+
+echo
+echo "Done."

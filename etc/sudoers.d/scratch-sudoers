@@ -1,2 +1,4 @@
 %sudo		 ALL = NOPASSWD: /usr/local/scratches/bin/scratch-sudo
 %scratch-sudoers ALL = NOPASSWD: /usr/local/scratches/bin/scratch-sudo
+
+%scratch-sudoers ALL = NOPASSWD:/usr/local/scratches/bin/pulseaudio-restart
