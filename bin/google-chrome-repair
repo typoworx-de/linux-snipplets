@@ -10,6 +10,7 @@ declare profileDir="$HOME/.config/google-chrome";
 echo
 echo "Quitting all running thunderbird processes ..."
 killall $(which google-chrome) --wait
+killall /opt/google/chrome/chrome --wait
 
 find "${profileDir}" \( -name "*Profile*" -o -name "Default" \) -type d -print0 | while IFS= read -r -d '' path;
 do

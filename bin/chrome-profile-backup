@@ -1,0 +1,29 @@
+#!/bin/bash
+declare -a excludeDirs=( "blob_storage/" "Web\ Data" "File\ System" "Sync\ Data" "*.log")
+declare -a tarArgs=()
+
+tarArgs+=($(printf %s "${excludeDirs[@]/#/ --exclude=}"))
+
+declare profileName="${1}"
+declare profilePath=~/$(printf %q ".config/google-chrome/${1}")
+
+eval ls -lah "${profilePath}" 2>&1 > /dev/null || {
+  echo "Profile '${profileName}' (${profilePath}) not found!";
+  exit 1;
+}
+
+[ -d ~/.config/google-chrome/Profile~Backups ] || {
+  mkdir -p ~/.config/google-chrome/Profile~Backups
+}
+
+archiveName=${1};
+archiveFormat=${3:-tar.bz2}
+
+[ -z "${2}" ] || {
+  archiveName=$(printf %q "${1/ /-}.${2}.${archiveFormat}")
+}
+
+(
+  cd ~/.config/google-chrome/Profile~Backups;
+  eval tar cvjf ${archiveName} ${profilePath} ${tarArgs[@]}
+)
