@@ -4,11 +4,13 @@ declare -a tarArgs=()
 
 tarArgs+=($(printf %s "${excludeDirs[@]/#/ --exclude=}"))
 
-declare profileName="${1}"
+declare date=$(date '+%Y-%m-%d--%H-%M')
+declare profileId="${1}"
+declare backupName="${2}"
 declare profilePath=~/$(printf %q ".config/google-chrome/${1}")
 
 eval ls -lah "${profilePath}" 2>&1 > /dev/null || {
-  echo "Profile '${profileName}' (${profilePath}) not found!";
+  echo "Profile '${profileId}' (${profilePath}) not found!";
   exit 1;
 }
 
@@ -16,14 +18,23 @@ eval ls -lah "${profilePath}" 2>&1 > /dev/null || {
   mkdir -p ~/.config/google-chrome/Profile~Backups
 }
 
-archiveName=${1};
-archiveFormat=${3:-tar.bz2}
+archiveFormat="${3:-tar.bz2}"
+archiveName="${1}.${date}.${archiveFormat}";
 
-[ -z "${2}" ] || {
-  archiveName=$(printf %q "${1/ /-}.${2}.${archiveFormat}")
+[ -z "${backupName}" ] && {
+  prefsFile="${profilePath}/Preferences"
+  profileName=$(eval cat "${prefsFile}" | jq -r '.profile.name')
 }
+
+[ -z "${profileName}" ] || {
+  archiveName=$(printf %q "${1/ /-}.${profileName}.${date}.${archiveFormat}")
+}
+
+echo "Creating ${archiveName} ...";
 
 (
   cd ~/.config/google-chrome/Profile~Backups;
   eval tar cvjf ${archiveName} ${profilePath} ${tarArgs[@]}
 )
+
+exit $?
