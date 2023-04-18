@@ -1,5 +1,5 @@
 #!/bin/bash
-declare -a excludeDirs=( "blob_storage/" "Web\ Data" "File\ System" "Sync\ Data" "*.log")
+declare -a excludeDirs=( "blob_storage/" "Web\ Data" "File\ System" "Local\ Storage" "Service\ Worker" "VideoDecodeStats" "Sync\ Data" "IndexedDB" "*.log")
 declare -a tarArgs=()
 
 tarArgs+=($(printf %s "${excludeDirs[@]/#/ --exclude=}"))
