@@ -13,8 +13,10 @@ NoDisplay=true
 StartupWMClass=google-chrome-%%profileId%%
 EOM
 
-find ~/.config/google-chrome -name "*Profile*" -type d -maxdepth 1 -print0 | while IFS= read -r -d '' path;
+find ~/.config/google-chrome  -maxdepth 1 -name "*Profile*" -type d -print0 | while IFS= read -r -d '' path;
 do
+   [[ $(basename "${path}") = "Profile~Backups" ]] && continue;
+
    prefsFile=${path}/Preferences;
 
    if [[ ! -f $prefsFile ]];
