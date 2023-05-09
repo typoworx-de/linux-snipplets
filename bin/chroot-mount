@@ -1,0 +1,26 @@
+#!/bin/bash
+
+[ -z "$@" ] && {
+  echo "Syntax: $(basename $0) /mnt/my-chroot";
+  exit 1;
+}
+
+declare mountRoot="${1}";
+declare chrootShell="bash";
+
+[ -d "${mountRoot}" ] || {
+  echo "Invalid mount-root path!";
+  exit 1;
+}
+
+for m in /sys /proc /dev /dev/pts;
+do
+  mountPath="${mountRoot}${m/\//}";
+  [[ $(mount | grep -c "${mountPath}") = 1 ]] && continue;
+
+  sudo mount -o bind "${m}" "${mountPath}" || exit 1;
+done
+
+sudo chroot "${mountRoot}";
+
+exit $?

@@ -1,0 +1,18 @@
+#!/bin/bash
+mkfifo /tmp/aptManualInstalled.$$;
+mkfifo /tmp/aptAutomaticInstalled.$$;
+
+apt list --manual-installed | cut -d/ -f1 | sort -u > aptManualInstalled;
+apt --installed list | grep -v automatic | sort -u > aptAutomaticInstalled;
+
+comm -23 <(cat aptManualInstalled) <(cat aptAutomaticInstalled)
+
+rm aptManualInstalled aptAutomaticInstalled;
+
+#[[ $(apt-mark --help | grep -c 'showmanual') > 0 ]] && {
+#  apt-mark showmanual;
+#} || {
+#  comm -23 <(apt-mark showmanual | sort -u) <(apt-mark showauto | sort -u)
+#}
+
+exit $?

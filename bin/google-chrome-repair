@@ -7,12 +7,18 @@ declare profileDir="$HOME/.config/google-chrome";
   exit 1;
 }
 
+[ -x $(which profile-cleaner) ] || {
+  echo "Profile-Cleaner Tool not installed/found!";
+  exit 1;
+}
+
 echo
-echo "Quitting all running thunderbird processes ..."
+echo "Quitting all running google-chrome processes ..."
 killall $(which google-chrome) --wait
 killall /opt/google/chrome/chrome --wait
 
-find "${profileDir}" \( -name "*Profile*" -o -name "Default" \) -type d -print0 | while IFS= read -r -d '' path;
+#Profile~Backups
+find "${profileDir}" \( -name "*Profile*" -o -name "Default" \) -type d -prune ! -name 'Profile~Backups' -print0 | while IFS= read -r -d '' path;
 do
    prefsFile=${path}/Preferences;
 
@@ -30,9 +36,7 @@ do
    find "${profileDir}" -type f -name 'SingletonLock' -delete
 
    echo "Running profile-cleaner ..."
-   [ -x /usr/bin/profile-cleaner ] && {
-     /usr/bin/profile-cleaner gc -p "${profileDir}"
-   }
+   profile-cleaner gc -p "${profileDir}"
 done
 
 echo
