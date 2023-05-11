@@ -1,0 +1,59 @@
+#!/bin/bash
+
+_name=$(basename $0)
+_pwd=$(pwd)
+rulesFile=$(realpath $(dirname $0)"/../share/google-chrome-sync.essential-files.rules")
+
+sourceBrowser='google-chrome'
+sourceProfileRoot=$(readlink -f ~/.config/${sourceBrowser}/)
+
+targetBrowser='chromium~testsync'
+targetProfileRoot=$(readlink -f ~/.config/${targetBrowser}/)
+
+declare -a args=()
+declare -a excludes=()
+declare -a includes=()
+
+declare excludeArg='--exclude='
+declare includeArg=''
+
+[[ "${syncTool}" == 'rsync' ]] && {
+  includeArg='--include='
+  excludeArg='--exclude='
+
+  args+=( "--log-file=${_pwd}/google-chrome-sync.log" )
+}
+
+#sourceProfileRoot=$(printf "%q" "${chromeProfileRoot}")
+#targetProfileRoot=$(printf "%q" "${targetProfileRoot}")
+
+# --delete --delete-after --delete-excluded
+args+=(--dry-run)
+args+=(--progress)
+args+=(--log-file="${_pwd}/${_name}.log")
+args+=(--links --copy-links --copy-dirlinks)
+args+=(--times --prune-empty-dirs)
+
+#args+=('--filter=":+ '${rulesFile}'"')
+args+=('--filter=merge '${rulesFile}'')
+#args+=('--filter="- *"')
+
+#  echo rsync -av \
+#    "${args[@]}" \
+#    "${chromeProfileRoot}" "${targetProfileRoot}" \
+#  ;
+
+(
+  mkdir -p "${targetProfileRoot}";
+  cd "${targetProfileRoot}";
+  rsync -av \
+    "${args[@]}" \
+    "${sourceProfileRoot}" "${targetProfileRoot}" \
+  || \
+  echo "[error: rsync -av" \
+    "${args[@]}" \
+    "${sourceProfileRoot}" "${targetProfileRoot}" \
+  ;
+)
+
+exit $?

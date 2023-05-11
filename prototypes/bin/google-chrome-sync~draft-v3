@@ -1,0 +1,81 @@
+#!/bin/bash
+
+_name=$(basename $0)
+_pwd=$(pwd)
+syncProfilesDir=$(realpath $(dirname $0)"/../share")
+#rulesFile=$(realpath $(dirname $0)"/../share/google-chrome-sync.essential-files.rules")
+
+sourceBrowser='google-chrome'
+sourceProfileRoot=$(readlink -f ~/.config/${sourceBrowser}/)
+
+targetBrowser='chromium~testsync'
+targetProfileRoot=$(readlink -f ~/.config/${targetBrowser}/)
+
+declare -a args=()
+declare -a excludes=()
+declare -a includes=()
+
+declare excludeArg='--exclude='
+declare includeArg=''
+
+[[ "${syncTool}" == 'rsync' ]] && {
+  includeArg='--include='
+  excludeArg='--exclude='
+
+  args+=( "--log-file=${_pwd}/google-chrome-sync.log" )
+}
+
+#sourceProfileRoot=$(printf "%q" "${chromeProfileRoot}")
+#targetProfileRoot=$(printf "%q" "${targetProfileRoot}")
+
+# --delete --delete-after --delete-excluded
+args+=(--dry-run)
+args+=(--progress)
+args+=(--log-file="${_pwd}/${_name}.log")
+args+=(--links --copy-links --copy-dirlinks)
+args+=(--times --prune-empty-dirs)
+
+#args+=('--filter=":+ '${rulesFile}'"')
+
+tmpRuleFile=$(mktemp -t $(basename $0).$$.XXXXXXXXX);
+for rulesFile in google-chrome-sync.essential-files.rules google-chrome-sync.no-google-sync.rules;
+do
+  [ -r "${syncProfilesDir}/${rulesFile}" ] || {
+    printf 'Error reading: %s\n' "${syncProfilesDir}/${rulesFile}";
+    continue;
+  }
+
+  cat "${syncProfilesDir}/${rulesFile}" >> "${tmpRuleFile}"
+done
+
+args+=('--filter=merge '${tmpRuleFile}'')
+
+#args+=('--filter=merge '${syncProfilesDir}'/google-chrome-sync.essential-files.rules')
+#args+=('--filter=merge '${syncProfilesDir}'/google-chrome-sync.no-google-sync.rules')
+#args+=('--filter="- **"')
+
+#  echo rsync -av \
+#    "${args[@]}" \
+#    "${chromeProfileRoot}" "${targetProfileRoot}" \
+#  ;
+
+[ -f "${_pwd}/${_name}.log" ] && {
+  rm "${_pwd}/${_name}.log";
+}
+
+(
+  mkdir -p "${targetProfileRoot}";
+  cd "${targetProfileRoot}";
+  rsync -av \
+    "${args[@]}" \
+    "${sourceProfileRoot}" "${targetProfileRoot}" \
+  || \
+  echo "[error: rsync -av" \
+    "${args[@]}" \
+    "${sourceProfileRoot}" "${targetProfileRoot}" \
+  ;
+)
+
+[ -f "${tmpRuleFile}" ] && rm "${tmpRuleFile}";
+
+exit $?

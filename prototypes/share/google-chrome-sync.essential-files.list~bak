@@ -1,0 +1,90 @@
+AutofillRegex
+AutofillStates
+Bookmarks
+Cookies
+Current Session
+Current Tabs
+databases/*
+Extension Activity/*
+Extension Cookies/*
+Extension Rules/*
+Extensions/*
+Extension Scripts/*
+Extension State/*
+History
+IndexedDB/*
+Last Session
+Last Tabs
+Last Version
+Local Extension Settings/*
+Local State
+Local Storage/*
+Login Data
+Login Data For Account
+Preferences
+Secure Preferences
+Sessions/*
+Session Storage/*
+Shortcuts
+Web Data/*
+Default
+Default/Bookmarks
+Default/Cookies
+Default/Current Session
+Default/Current Tabs
+Default/databases/*
+Default/Extension Activity/*
+Default/Extension Cookies/*
+Default/Extension Rules/*
+Default/Extensions/*
+Default/Extension Scripts/*
+Default/Extension State/*
+Default/History
+Default/IndexedDB/*
+Default/Last Session
+Default/Last Tabs
+Default/Last Version
+Default/Local Extension Settings/*
+Default/Local Storage/*
+Default/Login Data
+Default/Login Data For Account
+Default/Preferences
+Default/Secure Preferences
+Default/Sessions/*
+Default/Session Storage/*
+Default/Shortcuts
+Default/Sync App Settings/*
+Default/Sync Data/*
+Default/Sync Extension Settings/*
+Default/Visited Links
+Profile **/**
+Profile */Bookmarks
+Profile */Cookies
+Profile */Current Session
+Profile */Current Tabs
+Profile */databases/*
+Profile */Extension Activity/*
+Profile */Extension Cookies/*
+Profile */Extension Rules/*
+Profile */Extensions/*
+Profile */Extension Scripts/*
+Profile */Extension State/*
+Profile */History
+Profile */IndexedDB/*
+Profile */Last Session
+Profile */Last Tabs
+Profile */Last Version
+Profile */Local Extension Settings/*
+Profile */Local Storage/*
+Profile */Login Data
+Profile */Login Data For Account
+Profile */Preferences
+Profile */Secure Preferences
+Profile */Sessions/*
+Profile */Session Storage/*
+Profile */Shortcuts
+Profile */Sync App Settings/*
+Profile */Sync Data/*
+Profile */Sync Extension Settings/*
+Profile */Visited Links
+Profile */Web Data/*

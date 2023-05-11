@@ -1,0 +1,108 @@
+#!/bin/bash
+
+_pwd=$(pwd)
+syncTool=rsync
+fileList=$(realpath $(dirname $0)"/../share/google-chrome-sync.essential-files.list")
+chromeProfileRoot=~/.config/google-chrome/
+targetProfileRoot=~/.config/chromium~testsync/
+
+declare -a args=()
+declare -a excludes=()
+declare -a includes=()
+
+declare excludeArg='--exclude='
+declare includeArg=''
+
+[[ "${syncTool}" == 'rsync' ]] && {
+  includeArg='--include='
+  excludeArg='--exclude='
+
+  args+=( "--log-file=${_pwd}/google-chrome-sync.log" )
+}
+
+# Generic Excludes
+#includes+=( "${includeArgs}Extensions" )
+
+#includes+=( "Default" )
+#includes+=( "Profile *" )
+
+for Profile in ${chromeProfileRoot}/Default ${chromeProfileRoot}/Profile\ *;
+do
+  [[ -d "${Profile}" ]] || continue;
+  includes+=( "${includeArgs}${Profile}" )
+done
+
+excludes+=( "${excludeArg}LOCK" )
+#excludes+=( "${excludeArg}LOG" )
+excludes+=( "${excludeArg}*~*" )
+excludes+=( "${excludeArg}*.log" )
+excludes+=( "${excludeArg}*.tmp" )
+excludes+=( "${excludeArg}*.bak" )
+excludes+=( "${excludeArg}*backup*" )
+excludes+=( "${excludeArg}*Backup*" )
+excludes+=( "${excludeArg}*cache*/*" )
+excludes+=( "${excludeArg}*Cache*/*" )
+excludes+=( "${excludeArg}*Metrics*" )
+excludes+=( "${excludeArg}*Crash*" )
+excludes+=( "${excludeArg}GPUCache*/*" )
+excludes+=( "${excludeArg}ShaderCache*/*" )
+
+chromeProfileRoot=$(printf "%q" "${chromeProfileRoot}")
+targetProfileRoot=$(printf "%q" "${targetProfileRoot}")
+
+while read -r file;
+do
+  cmd="${file:0:1}"
+  #file=$(printf "%q" "${file}")
+  file=${file/ /\ };
+
+  [[ "${cmd}" =~ \+|\- ]] && {
+    # Strip cmd-char from file-name
+    file="${file#?}"
+  } || {
+    # Default cmd is include
+    cmd='+'
+  }
+
+  [[ "${file:0:1}" != '/' ]] && {
+    file="./${file}";
+  }
+
+  [[ "${cmd}" == '-' ]] && {
+    excludes+=( "${excludeArg}${file}" )
+    excludes+=( "${excludeArg}${file}/*" )
+  } || {
+    includes+=( "${includeArg}${file}" )
+#    includes+=( "${includeArg}${file}/*" )
+  }
+done < "${fileList}"
+
+#echo ${includes[@]}
+#echo ${excludes[@]}
+#exit
+
+#[[ "${syncTool}" == 'tar' ]] && {
+#  tar -cvjf $(pwd)/chrome-profile.essentials.tar.bz2 "${excludes[@]:---exclude=*}" "${includes[@]}" "${chromeProfileRoot}"
+#}
+
+#declare -a files=()
+#find "${chromeProfileRoot}" -not -empty
+
+[[ "${syncTool}" == 'rsync' ]] && {
+# --delete --delete-after --delete-excluded
+  (
+    mkdir -p "${targetProfileRoot}";
+    cd "${targetProfileRoot}";
+    rsync -av --dry-run --progress \
+      --links --copy-links --copy-dirlinks \
+      --times --prune-empty-dirs \
+      "${args[@]}" \
+      --exclude="*" \
+      "${excludes[@]}" \
+      "${includes[@]}" \
+      "${chromeProfileRoot}" "${targetProfileRoot}" \
+    ;
+  )
+}
+
+exit $?
