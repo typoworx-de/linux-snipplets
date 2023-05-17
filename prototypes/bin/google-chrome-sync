@@ -11,17 +11,22 @@ function syntax() {
   echo "-t|--target     > google-chrome|chromium|brave";
   echo "-u|--user	optional: user name or absolute-path for profiles,"
   echo "		default is ${HOME} of current user"
+  echo "-pc|--clean	clean target profile-dir deleting unmatched from source"
   echo "-f|--force	creates target directory if not existing"
   echo "-d|--dry-run	dry-run without doing anything"
   exit 1
 }
 
-declare -i dryRun=1
+[ "${#@}" == 0 ] && syntax;
+
+declare -i dryRun=0
+declare -i force=0
+declare -i clean=0
 declare userDir=~;
 declare sourceBrowser=''
 declare targetBrowser=''
 
-getopts=`getopt -o t:s:u:fh --long source:,target:,user:,force,dry-run,help -n "$0" -- "$@"`
+getopts=`getopt -o t:s:u:fhc --long source:,target:,user:,force,dry-run,clean,help -n "$0" -- "$@"`
 
 eval set -- "$getopts"
 while true ; do
@@ -42,6 +47,9 @@ while true ; do
         -f|--force)
                 force=1;
                 shift 1;;
+        -c|--clean)
+                clean=1;
+                shift 1;;
         -d|--dry-run)
 		dryRun=1;
                 shift 1;;
@@ -61,8 +69,8 @@ done
   exit 1
 }
 
-sourceProfileRoot=$(readlink -f ${userDir:-~}/.config/${sourceBrowser}/)
-targetProfileRoot=$(readlink -f ${userDir:-~}/.config/${targetBrowser}/)
+sourceProfileRoot=$(readlink -f ${userDir:-~}/.config/${sourceBrowser}/)/
+targetProfileRoot=$(readlink -f ${userDir:-~}/.config/${targetBrowser}/)/
 
 [ -d "${sourceProfileRoot}" ] || {
   echo "Error ${sourceProfileRoot} not found!"
@@ -80,9 +88,8 @@ declare -a args=()
 declare excludeArg='--exclude='
 declare includeArg=''
 
-# --delete --delete-after --delete-excluded
-
 [ "${dryRun}" ] && args+=(--dry-run)
+[ "${clean}" ] && args+=(--delete --delete-after --delete-excluded)
 
 args+=(--progress)
 args+=(--log-file="${_pwd}/${_name}.log")
@@ -120,7 +127,7 @@ args+=('--filter=merge '${tmpRuleFile}'')
 (
   mkdir -p "${targetProfileRoot}";
   cd "${targetProfileRoot}";
-  echo rsync -av \
+  rsync -av \
     "${args[@]}" \
     "${sourceProfileRoot}" "${targetProfileRoot}" \
   || \

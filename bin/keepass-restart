@@ -1,0 +1,9 @@
+#!/bin/bash
+
+for pid in $(ps axo pid,command | grep -iE 'keepass2?(\.exe)' | xargs | cut -f1 -d' ');
+do
+  kill -9 ${pid};
+  wait $paid;
+done
+
+$(keepass2 >/dev/null 2>&1 &)
