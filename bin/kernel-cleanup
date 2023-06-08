@@ -11,8 +11,12 @@ fi
 
 OLD=$(ls -tr /boot/vmlinuz-* | head -n -2 | cut -d- -f2- |
     awk '{print "linux-image-" $0 " linux-headers-" $0}' )
+
 if [ -n "$OLD" ]; then
-    apt-get -qy remove --purge $OLD
+    echo "Found old Kernel-Packages being removed:";
+    echo "> $OLD";
+
+    apt-get -qy remove --purge $OLD || true
 fi
 
 apt-get -qy autoremove --purge
