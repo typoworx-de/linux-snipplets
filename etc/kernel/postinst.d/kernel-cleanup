@@ -1,0 +1,38 @@
+#!/bin/bash
+declare -i keepOnlyNewKernels=2
+
+# Find waist files in /boot
+declare -a pruneOldKernels1=$(ls -tr /boot/vmlinuz-* | head -n -2 | cut -d- -f2- | awk '{print "linux-image-" $0 " linux-headers-" $0}' )
+
+[ -z "${keepOnlyNewKernels}" ] || {
+  keepOnlyNewKernels=$((${keepOnlyNewKernels}+1));
+
+  declare -a pruneOldKernels2=$(dpkg -l | grep -Eo '^(ii|rc)[ ]*linux-image[^ ]+' | sed -E 's/^(ii|rc)[ ]*//' | grep -v $(uname -r) | grep -v 'linux-image-generic' | sort -nr | tail -n+${keepOnlyNewKernels:-3});
+  declare -a keepKernels=$(dpkg -l | grep -Eo '^(ii|rc)[ ]*linux-image[^ ]+' | sed -E 's/^(ii|rc)[ ]*//' | sort -nr | head -n${keepOnlyNewKernels:-3});
+}
+
+[ -n "${pruneOldKernels1[@]}${pruneOldKernels2[@]}" ] && {
+  declare -a pruneKernels=(${pruneOldKernels1[@]} ${pruneOldKernels2[@]});
+  [ "${#pruneKernels[@]}" -gt "${keepOnlyNewKernels:-1}" ] && {
+    echo "Found old Kernel-Packages in /boot being removed:";
+    printf '%s\n' "${pruneKernels[@]}";
+
+    apt-get -qy remove --purge ${pruneKernels[@]} || true;
+  }
+}
+
+#echo "out"
+#echo "${keepKernels[@]//$'\n'/|}"
+#echo
+#exit
+
+declare -a pruneableKernelDeps=$(dpkg --list | grep -v $(uname -r) | grep -E "${@:-.+}" | grep -Eo '^rc[ ]*linux-(image|headers|modules)[^ ]+' | grep -vE "${keepKernels[@]//$'\n'/|}" | cut -d " " -f 3);
+
+[ -n "${pruneableKernelDeps[@]}" ] && {
+  echo
+  echo "Pruning old Kernel-Depends/Packages found additionally";
+  printf '%s\n' "${pruneableKernelDeps[@]}";
+  apt-get -qy autoremove --purge ${pruneableKernelDeps[@]} || true;
+}
+
+exit 0
