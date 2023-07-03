@@ -1,0 +1,22 @@
+#!/bin/bash
+
+function skipDockerIsRunning()
+{
+  echo "Skipping: Docker or Containerd service is running!";
+  exit 1;
+}
+
+ps -C $(which docker) > /dev/null && skipDockerIsRunning;
+ps -C $(which containerd) > /dev/null && skipDockerIsRunning;
+
+declare -a mountedDockerOverlays=($(mount | grep -P 'overlay on /var/lib/docker/overlay2?/[^ ]+' | cut -d' ' -f3));
+
+[ "${#mountedDockerOverlays[@]}" -eq 0 ] && exit 0;
+
+echo "Unmounting docker-overlays ..."
+for overlay in ${mountedDockerOverlays[@]};
+do
+  echo "${overlay}"
+  #xargs -l1 sudo umount -rf && exit $?
+  sudo umount -rf "${overlay}";
+done

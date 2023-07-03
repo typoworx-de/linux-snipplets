@@ -1,13 +1,16 @@
 #!/bin/bash
 
-node=$(hostname | tr '[[:upper:]]' '[[:lower:]]')'-builder';
-network='php-stack.local';
+buildNode=$(hostname | tr '[[:upper:]]' '[[:lower:]]')'-builder';
+#network='php-stack.local';
+network='host'
 
-docker buildx create \
-  --node "${node}" \
+instance=$(docker buildx create \
+  --node "${buildNode:-default}" \
   --driver docker-container \
   --driver-opt network="${network:-host}" \
-  --config /etc/buildkit/buildkitd.toml \
-&& docker buildx inspect --bootstrap
+  --config /etc/buildkit/buildkitd.toml)
+
+docker buildx inspect --bootstrap
+docker buildx use "${instance:-default}"
 
 exit $?
