@@ -1,0 +1,9 @@
+#!/bin/sh
+
+sudo mkdir /root/module-signing
+(
+  cd /root/module-signing;
+  sudo openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=TYPOworx/";
+  sudo chmod 600 MOK.priv;
+  mokutil --import /root/module-signing/MOK.der;
+)

@@ -1,14 +1,12 @@
 #!/bin/bash
 declare -a args=()
 
+args+=(--force)
+
 [[ "$@" =~ " --all " ]] \
   && args+=(--all)
 
-[[ "$@" =~ " --force " ]] \
-  && args+=(--force)
-
 [[ -z "$@" || " $@ " =~ " --auto " ]] && {
-  args+=(--force)
   args+=(--filter until=168h) # 24h*7=168h
 }
 

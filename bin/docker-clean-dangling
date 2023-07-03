@@ -1,0 +1,33 @@
+#!/bin/bash
+
+echo "Checking dangling images ..."
+declare -a danglingImages=($(sudo docker images --filter "dangling=true" | grep none | awk '{ print $3; }'));
+
+echo "Checking dangling volumes ..."
+declare -a danglingVolumes=($(docker volume ls -f "dangling=true" | xargs -l1 | cut -d' ' -f2 | grep -P '^[0-9a-f]+$'));
+
+if [[ ! -z "${danglingImages}" ]];
+then
+  for image in "${danglingImages[@]}";
+  do
+    echo -e "\033[1;37m";
+    echo "> image rm";
+    sudo docker rmi -f "${image}" && echo -ne "\033[0;32mOK" || echo -ne "\033[0;31mFailed";
+  done
+fi
+
+echo -e "\033[0m";
+
+if [[ ! -z "${danglingVolumes}" ]];
+then
+  echo "-----------"
+
+  for volume in "${danglingVolumes[@]}";
+  do
+    echo -e "\033[1;37m";
+    echo "> volume rm";
+    sudo docker volume rm "${volume}" && echo -ne "\033[0;32mOK" || echo -ne "\033[0;31mFailed";
+  done
+fi
+
+echo -e "\033[0m";
