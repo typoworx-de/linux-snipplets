@@ -1,0 +1,5 @@
+#!/bin/sh
+release=$(git describe --exact-match --tags $(git log -n1 --pretty='%h') | sed -e 's/[^A-Za-z0-9._-]/-/g');
+
+echo "Creating ../${PWD##*/}-${release:-unnamed}.zip from ^HEAD";
+git archive HEAD -o ../${PWD##*/}-${release:-unnamed}.zip || exit $?;

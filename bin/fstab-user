@@ -1,0 +1,6 @@
+#!/bin/bash
+
+sed 's|~|$HOME|g' < /etc/fstab.user/fstab.${UID} | envsubst | sudo tee /var/run/tmpfiles.d/fstab-user.${UID} > /dev/null;
+
+sudo mount -af /var/run/tmpfiles.d/fstab-user.${UID} \
+&& sudo mount -aT /var/run/tmpfiles.d/fstab-user.${UID};

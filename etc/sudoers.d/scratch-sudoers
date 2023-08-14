@@ -2,3 +2,4 @@
 %scratch-sudoers ALL = NOPASSWD: /usr/local/scratches/bin/scratch-sudo
 
 %scratch-sudoers ALL = NOPASSWD:/usr/local/scratches/bin/pulseaudio-restart
+%scratch-sudoers ALL = NOPASSWD:alsa

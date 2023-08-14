@@ -15,3 +15,5 @@ _pwd=$(realpath $(dirname $0))
   ln -s "${_pwd}/etc/sudoers.d/scratch-sudoers" "/etc/sudoers.d/scratch-sudoers";
 }
 
+sudo groupadd scratch-sudoers
+sudo usermod -aG scratch-sudoers $USER

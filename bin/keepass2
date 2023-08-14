@@ -1,0 +1,6 @@
+#!/bin/bash
+keepass2_bin=$(which -a keepass2 | tail -n1)
+
+exec ${keepass2_bin} "$@" || exec $0 "$@"
+
+exit $?
