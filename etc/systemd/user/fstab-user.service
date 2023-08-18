@@ -1,0 +1,12 @@
+[Unit]
+Description=Starting fstab-user.service
+#After=dbus.service
+
+[Service]
+Type=OneShot
+StandardOutput=journal
+ExecStart=/bin/bash -c /usr/local/scratches/bin/fstab-user
+
+[Install]
+WantedBy=graphical.target
+#WantedBy=multi-user.target

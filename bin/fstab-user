@@ -1,6 +1,30 @@
 #!/bin/bash
 
-sed 's|~|$HOME|g' < /etc/fstab.user/fstab.${UID} | envsubst | sudo tee /var/run/tmpfiles.d/fstab-user.${UID} > /dev/null;
+systemctl --user is-enabled fstab-user 2>&1 >/dev/null || {
+  echo "Service is not enabled!";
+  echo "Installation:";
+  echo "ln -sf $(realpath ../../etc/systemd/user/fstab-user.service) /etc/systemd/user/fstab-user.service";
+  echo "systemctl --user enable fstab-user.service";
+  echo "systemctl --user start fstab-user.service";
+  echo;
+  exit;
+}
 
-sudo mount -af /var/run/tmpfiles.d/fstab-user.${UID} \
-&& sudo mount -aT /var/run/tmpfiles.d/fstab-user.${UID};
+
+exit
+[ ${EUID} != 0 ] && {
+ sudo $0 "$@" || echo "Failed sudo'ong $0";
+ exit 0;
+}
+
+[ -f /etc/fstab.user/fstab.${SUDO_UID} ] || {
+  echo "No User-Mount units found for ${SUDO_USER} in /etc/fstab.user/fstab.${SUDO_UID}";
+  exit 0;
+}
+
+sed 's|~|$HOME|g' < /etc/fstab.user/fstab.${SUDO_UID} | envsubst | sudo tee /var/run/tmpfiles.d/fstab-user.${SUDO_UID} > /dev/null;
+
+mount -af /var/run/tmpfiles.d/fstab-user.${SUDO_UID} \
+&& mount -aT /var/run/tmpfiles.d/fstab-user.${SUDO_UID};
+
+exit $?

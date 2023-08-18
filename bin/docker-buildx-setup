@@ -1,16 +1,28 @@
 #!/bin/bash
 
-buildNode=$(hostname | tr '[[:upper:]]' '[[:lower:]]')'-builder';
-#network='php-stack.local';
 network='host'
+buildkitVersion='v0.12.0-rc2'
+image="moby/buildkit:${buildkitVersion:-master}"
 
-instance=$(docker buildx create \
-  --node "${buildNode:-default}" \
-  --driver docker-container \
-  --driver-opt network="${network:-host}" \
-  --config /etc/buildkit/buildkitd.toml)
+echo "Pruning existing builder instances ...";
+docker builder ls | \
+  grep -Po '^[^ ]+' | \
+  tail -n+2 | \
+  grep -v 'default' | \
+  xargs -l1 -I{} docker builder rm --force {} \
+;
 
-docker buildx inspect --bootstrap
-docker buildx use "${instance:-default}"
+echo
+echo "Pruning caches ...";
+docker builder prune --all --force;
+
+instance=$(
+  docker buildx create \
+    --use --bootstrap \
+    --driver docker-container  \
+    --driver-opt network="${network:-host}" \
+    --driver-opt image="${image}" \
+    --config /etc/buildkit/buildkitd.toml
+);
 
 exit $?
