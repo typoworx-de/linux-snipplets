@@ -1,8 +1,8 @@
 #!/bin/bash
 
 network='host'
-buildkitVersion='v0.12.0-rc2'
-image="moby/buildkit:${buildkitVersion:-master}"
+buildkitVersion='latest'
+image="moby/buildkit:${buildkitVersion:-latest}"
 
 echo "Pruning existing builder instances ...";
 docker builder ls | \

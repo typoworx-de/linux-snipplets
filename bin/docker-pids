@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for id in $(docker container ls --format "{{.ID}}");
+do
+  docker inspect -f '{{.State.Pid}} {{.Name}}' "${id}";
+done
