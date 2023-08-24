@@ -23,6 +23,20 @@
 
 sed 's|~|$HOME|g' < /etc/fstab.user/fstab.${SUDO_UID} | envsubst | sudo tee /var/run/tmpfiles.d/fstab-user.${SUDO_UID} > /dev/null;
 
+for mountpoint in $(sed -r 's/[ \t]+/ /gm' < /var/run/tmpfiles.d/fstab-user.${SUDO_UID} | cut -d' ' -f2);
+do
+  [ -d "${mountpoint}" ] && continue;
+
+  parentDir=$(dirname "${mountpoint}");
+
+  [ -d "${parentDir}" ] || {
+    echo "Skipping: ${parentDir} does not exist. Only creating max. 1-level missing";
+    continue;
+  }
+
+  mkdir "${mountpoint}" || true;
+done
+
 mount -af /var/run/tmpfiles.d/fstab-user.${SUDO_UID} \
 && mount -aT /var/run/tmpfiles.d/fstab-user.${SUDO_UID};
 

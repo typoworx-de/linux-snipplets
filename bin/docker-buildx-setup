@@ -22,6 +22,7 @@ instance=$(
     --driver docker-container  \
     --driver-opt network="${network:-host}" \
     --driver-opt image="${image}" \
+    --buildkitd-flags '--allow-insecure-entitlement security.insecure' \
     --config /etc/buildkit/buildkitd.toml
 );
 

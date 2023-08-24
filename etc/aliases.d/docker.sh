@@ -1,0 +1,12 @@
+alias docker-timed="time docker"
+alias docker-run="docker run --rm -it"
+alias docker-build="docker-timed buildx build --progress=plain --cache-to=type=inline --always-recreate-deps --build-arg BUILD_TIME=$(date +%s) $@"
+alias docker-lint="docker run --rm -i hadolint/hadolint <"
+
+alias docker-compose-up="docker-compose up --always-recreate-deps --remove-orphans --wait"
+alias docker-compose-build="docker-compose build --push --build-arg BUILD_TIME=$(date +%s)"
+alias docker-compose-build-up="docker-compose up --build --push --include-deps --force-recreate --always-recreate-deps --remove-orphans --wait"
+alias docker-compose-run="docker-compose run --rm"
+alias docker-compose-rm="docker-compose rm --stop"
+alias docker-compose-restart="docker-compose down; docker-compose-up"
+alias docker-compose-down="docker-compose down --remove-orphans -v"
