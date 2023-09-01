@@ -1,0 +1,29 @@
+#!/bin/bash
+
+[[ -z "$@" ]] && {
+  echo "Syntax: $(basename $0) [path]";
+  echo;
+  echo "Searches recursively for all JSON files using find";
+  echo;
+  exit 0;
+}
+
+_path="${@: -1}";
+
+exitCode=0;
+for file in $(find "${_path}" -type f -iname '*.json' -print);
+do
+  [[ " $@ " = *" -q "* ]] || \
+    echo "Checking ${file}";
+
+  cat ${file} | \
+  jq -e empty 2>&1 | \
+  tee /dev/stdout | \
+  grep -q 'parse error:' && {
+    exitCode=1;
+    echo "${file} seems to be corrupt!";
+    echo;
+  }
+done
+
+exit ${exitCode};

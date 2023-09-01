@@ -5,7 +5,7 @@ buildkitVersion='latest'
 image="moby/buildkit:${buildkitVersion:-latest}"
 
 echo "Pruning existing builder instances ...";
-docker builder ls | \
+docker buildx ls | \
   grep -Po '^[^ ]+' | \
   tail -n+2 | \
   grep -v 'default' | \
@@ -14,7 +14,9 @@ docker builder ls | \
 
 echo
 echo "Pruning caches ...";
-docker builder prune --all --force;
+docker buildx prune --all --force;
+
+#    --driver-opt image="${image}" \
 
 instance=$(
   docker buildx create \

@@ -1,0 +1,40 @@
+#!/bin/bash
+
+_dockerfile=${@: -1};
+_workdir=$(pwd);
+_args=${@:1:$#-1};
+_dockerArgs=''
+
+[ -d ${_dockerfile} ] \
+  && _workdir=${_dockerfile} \
+  || _workdir=$(dirname ${_dockerfile}) \
+;
+
+
+[[ " $@ " = *" -c"* ]] || \
+  [ -f "${_workdir%/}/hadolint.yaml" ] && \
+    _args+=" -c /work/hadolint.yaml";
+
+[ -f ${_dockerfile} ] || \
+  _dockerfile+=$(ls -1 "${_workdir%/}"/Dockerfile* | head -n1);
+
+#_workdirAbsolute=$(realpath ${_workdir});
+#echo "Real-Path: " $(realpath ${_workdir});
+#echo "Dockerfile: " $(realpath --relative-to="/work" ${_dockerfile})
+
+[ -z "${_dockerfile}" ] || \
+  _args+=" < ${_dockerfile}";
+
+[ -z ${_workdir} ] || {
+  _workdir=$(realpath "${_workdir}");
+  _dockerArgs+=" -v ${_workdir}:/work:ro"
+}
+
+#  docker run --rm \
+#   -v /media/Encrypted/Customer-Data/schaller-digital/mainmetall/src.typo3-12/.docker/services/httpd-php:/work:ro \
+#   -ti hadolint/hadolint \
+#   /bin/hadolint -c /work/hadolint.yaml /work/Dockerfile.apache2-modphp
+#
+
+echo docker run --rm ${_dockerArgs} -ti hadolint/hadolint /bin/hadolint ${_args[@]}
+exit $?
