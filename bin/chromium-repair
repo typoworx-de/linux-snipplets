@@ -33,12 +33,12 @@ do
    echo "Profile: ${path}";
    echo "-----------------------------------------------------------";
    echo
-   echo "Checking for left dead lock-files."
-   find "${profileDir}" -type f -name 'SingletonLock' -delete
+   echo "Checking for left dead lock-files.";
+   find "${profileDir}" -type f -name 'SingletonLock' -delete;
 
-   echo "Running profile-cleaner ..."
-   profile-cleaner c -p "${profileDir}"
+   echo "Running profile-cleaner ...";
+   profile-cleaner c -p "${profileDir}";
 done
 
-echo
-echo "Done."
+echo;
+echo "Done.";
