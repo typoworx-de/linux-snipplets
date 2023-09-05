@@ -13,11 +13,12 @@ declare profileDir="$HOME/.config/chromium";
 }
 
 echo
-echo "Quitting all running chromium-browser processes ..."
-killall $(which chromium-browser) --wait
-killall /usr/bin/chromium-browser --wait
+echo "Quitting all running chromium-browser processes:"
+killall -e --wait $(which chromium-browser /snap/chromium/*/usr/lib/chromium-browser/chrome)
 
-#Profile~Backups
+echo
+echo "Searching profiles and running profile-cleaner:"
+echo
 find "${profileDir}" \( -name "*Profile*" -o -name "Default" \) -type d -prune ! -name 'Profile~Backups' -print0 | while IFS= read -r -d '' path;
 do
    prefsFile=${path}/Preferences;

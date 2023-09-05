@@ -1,0 +1,1 @@
+%scratch-sudoers ALL = NOPASSWD: /usr/local/scratches/bin/fstab-user
