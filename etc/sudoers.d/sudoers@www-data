@@ -1,0 +1,3 @@
+www-data ALL = NOPASSWD: /usr/local/scratches/bin/setfacl-www-data
+%adm	 ALL = NOPASSWD: /usr/local/scratches/bin/setfacl-www-data
+%sudo	 ALL = NOPASSWD: /usr/local/scratches/bin/setfacl-www-data
