@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=/usr/local/scratches/bin/toggle-touchpad
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name[de_DE]=Disable Touchpad
+Name=Disable Touchpad
+Comment[de_DE]=
+Comment=
