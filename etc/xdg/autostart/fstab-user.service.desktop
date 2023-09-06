@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Exec=/bin/systemctl --user start fstab-user.service
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Start fstab-user.service
+Comment=
