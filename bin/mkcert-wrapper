@@ -10,21 +10,26 @@ if [ ${ARCH} == 'x86_64' ]; then
   ARCH='amd64';
 fi
 
-if [[ ! -f "${_DIR}/mkcert-linux-${ARCH}" ]];
+if [ $(which mkcert) ];
 then
-  echo "Downloading mkcert-binary ${_DIR}/mkcert-linux-${ARCH}";
-  wget -q -O "${_DIR}/mkcert-linux-${ARCH}" "https://github.com/FiloSottile/mkcert/releases/download/${_MKCERT_RELEASE}/mkcert-${_MKCERT_RELEASE}-linux-${ARCH}" || {
-    echo "Error downloading mkcert-binary version ${_MKCERT_RELEASE} for arch ${ARCH}";
-    exit 1;
-  }
-fi
+  MKCERT_BIN=$(which mkcert | head -n1);
+else
+  if [[ ! -f "${_DIR}/mkcert-linux-${ARCH}" ]];
+  then
+    echo "Downloading mkcert-binary ${_DIR}/mkcert-linux-${ARCH}";
+    wget -q -O "${_DIR}/mkcert-linux-${ARCH}" "https://github.com/FiloSottile/mkcert/releases/download/${_MKCERT_RELEASE}/mkcert-${_MKCERT_RELEASE}-linux-${ARCH}" || {
+      echo "Error downloading mkcert-binary version ${_MKCERT_RELEASE} for arch ${ARCH}";
+      exit 1;
+    }
+  fi
 
-MKCERT_BIN=$(realpath "${_DIR}/mkcert-linux-${ARCH}");
+  MKCERT_BIN=$(realpath "${_DIR}/mkcert-linux-${ARCH}");
+fi
 
 if [ ! -x ${MKCERT_BIN} ];
 then
   echo "Missing executable permission. Trying to fix ...";
-  chmod +x ${MKCERT_BIN} || exit 1;
+  sudo chmod +x ${MKCERT_BIN} || exit 1;
 fi
 
 if [[ $@ = *'-cert-file'* ]];
@@ -73,7 +78,7 @@ else
   CERTNAME=$(expr match "${DOMAINS[0]}" '.*\.\(.*\..*\)')
 fi
 
-test -d "${_CERTDIR}/${CERTNAME}" || sudo mkdir "${_CERTDIR}/${CERTNAME}" || exit 1;
+test -d "${_CERTDIR}/${CERTNAME}" || sudo mkdir -p "${_CERTDIR}/${CERTNAME}" || exit 1;
 (cd ${_CERTDIR}/${CERTNAME}; CAROOT="${_CAROOT}" sudo ${MKCERT_BIN} -cert-file "${_CERTDIR}/${CERTNAME}/${CERTNAME}.pem" "${DOMAINS[@]}");
 
 # Clean-Up
