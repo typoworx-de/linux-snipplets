@@ -1,0 +1,1 @@
+alias mkcert="mkcert-wrapper"
