@@ -1,4 +1,3 @@
 %adm	ALL = NOPASSWD: /usr/bin/docker
 %sudo	ALL = NOPASSWD: /usr/bin/docker
 %docker	ALL = NOPASSWD: /usr/bin/docker
-
