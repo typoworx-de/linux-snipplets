@@ -73,7 +73,7 @@ else
   CERTNAME=$(expr match "${DOMAINS[0]}" '.*\.\(.*\..*\)')
 fi
 
-test -d "${_CERTDIR}/${CERTNAME}" || sudo mkdir "${_CERTDIR}/${CERTNAME}" || exit 1;
+test -d "${_CERTDIR}/${CERTNAME}" || sudo mkdir -p "${_CERTDIR}/${CERTNAME}" || exit 1;
 (cd ${_CERTDIR}/${CERTNAME}; CAROOT="${_CAROOT}" sudo ${MKCERT_BIN} -cert-file "${_CERTDIR}/${CERTNAME}/${CERTNAME}.pem" "${DOMAINS[@]}");
 
 # Clean-Up

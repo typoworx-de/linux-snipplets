@@ -1,2 +1,4 @@
-~/.local/share/mkcert	/etc/buildkit/certs/mkcert		none		defaults,bind		0	0
-~/.config/chromium	~/snap/chromium/common/chromium/	none		defaults,bind		0	0
+~/.local/share/mkcert	/etc/buildkit/certs/mkcert			none		defaults,bind		0	0
+~/.local/share/mkcert	~/snap/chromium/current/.local/share/mkcert	none		defaults,bind		0	0
+~/.config/chromium	~/snap/chromium/common/chromium/		none		defaults,bind		0	0
+~/.pki/nssdb		~/snap/chromium/current/.pki/nssdb		none		defaults,bind		0	0
