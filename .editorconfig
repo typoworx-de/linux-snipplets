@@ -1,0 +1,9 @@
+# EditorConfig: https://EditorConfig.org
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+[etc/fstab.user/fstab.*]
+indent_style = tab
