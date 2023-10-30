@@ -22,9 +22,11 @@ do
   then
     xinput disable $ID
     xinput set-prop $ID "Device Enabled" 0
+    gsettings set org.gnome.desktop.peripherals.touchpad send-events disabled
   else
     xinput enable $ID
     xinput set-prop $ID "Device Enabled" 1
+    gsettings set org.gnome.desktop.peripherals.touchpad send-events enabled
   fi
 done
 

@@ -19,5 +19,5 @@ alias pecl7.2="${scratchBin}/pecl7.2"
 alias pecl7.4="${scratchBin}/pecl7.4"
 alias pecl8.0="${scratchBin}/pecl8.0"
 
-#alias setfacl-www-data="scratch-sudo ${scratchBin}/setfacl-www-data"
+alias setfacl-www-data="scratch-sudo ${scratchBin}/setfacl-www-data"
 alias openssl-download-certs="scratch-sudo ${scratchBin}/openssl-download-certs"
