@@ -1,4 +1,4 @@
-alias docker-timed="time docker"
+qalias docker-timed="time docker"
 alias docker-run="docker run --rm -it"
 alias docker-build="docker-timed buildx build --progress=plain --cache-to=type=inline --always-recreate-deps --build-arg BUILD_TIME=$(date +%s)"
 alias docker-lint="docker run --rm -i hadolint/hadolint <"
@@ -10,8 +10,7 @@ alias docker-compose-down="docker-compose-stack-down"
 alias docker-compose-run="docker-compose-service-run"
 
 # Build Commands
-#alias docker-compose-build="docker-compose build --push --build-arg BUILD_TIME=$(date +%s)"
-alias docker-compose-build="docker-compose build --build-arg BUILD_TIME=$(date +%s)"
+alias docker-compose-build="docker-compose build --push --build-arg BUILD_TIME=$(date +%s)"
 alias docker-compose-build-up="docker-compose up --build --push --include-deps --force-recreate --always-recreate-deps --remove-orphans --wait"
 
 # Stack Commands

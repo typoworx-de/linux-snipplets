@@ -14,7 +14,7 @@ declare profileDir="$HOME/.config/chromium";
 
 echo
 echo "Quitting all running chromium-browser processes:"
-killall -e --wait $(which chromium-browser /snap/chromium/*/usr/lib/chromium-browser/chrome)
+killall -e --wait $(which chromium chromium-browser /snap/chromium/*/usr/lib/chromium-browser/chrome)
 
 echo
 echo "Searching profiles and running profile-cleaner:"

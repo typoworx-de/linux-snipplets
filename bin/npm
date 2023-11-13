@@ -1,0 +1,10 @@
+#!/bin/bash
+NVM_BIN=${NVM_BIN:-/usr/bin}
+
+if [ -f package.json ];
+then
+  npx nvm-auto
+  exec ${NVM_BIN}/npm "$@"
+else
+  nvm exec system npm "$@"
+fi
