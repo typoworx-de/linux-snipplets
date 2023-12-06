@@ -1,0 +1,8 @@
+#!/bin/bash -l
+
+[ -x /usr/bin/fish ] || {
+  echo "/usr/bin/fish not found, please install fish-shell first!";
+  exit 1;
+}
+
+exec -l /usr/bin/fish "$@"

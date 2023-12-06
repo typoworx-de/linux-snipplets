@@ -1,4 +1,5 @@
 #!/bin/bash
+#set -ex;
 
 DISPLAY=${DISPLAY:-\:0}
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$UID}/
@@ -12,31 +13,44 @@ declare -i STATE
 # Attention may be some kind of exclude-list may be required (is on my ToDo)
 #
 
+
 for DEVICE in $(xinput list | grep -Eio 'TouchPad\s*id\=[0-9]{1,2}');
 do
   ID=$(echo $DEVICE | grep -Eo '[0-9]{1,2}');
-  if [[ -z $ID || $ID -eq 0 ]];
+
+  if [[ -z "$ID" || "$ID" == 0 ]];
   then
     continue;
   fi
 
-  STATE=$(xinput list-props $ID|grep 'Device Enabled'|awk '{print $4}');
 
-  if [ $STATE -eq 1 ]
+  if [[ "${#@}" > 0 ]];
   then
-    xinput disable $ID
-    xinput set-prop $ID "Device Enabled" 0
-    gsettings set org.gnome.desktop.peripherals.touchpad send-events disabled
+    case "$1" in
+      enable|enabled|on):
+	STATE=1;;
+      disable|disabled|off):
+	STATE=0;;
+      help):
+	echo "Syntax: $(basename $0) [toggle with no param or enable|ob or disable|off]";
+    esac
   else
-    xinput enable $ID
-    xinput set-prop $ID "Device Enabled" 1
+    STATE=$(xinput list-props "$ID" | grep 'Device Enabled' | awk '{print $4}');
+  fi
+
+  if [ $STATE -eq 1 ];
+  then
+    echo "Touchpad enabled."
+
+    xinput enable "$ID"
+    xinput set-prop "$ID" "Device Enabled" 1
     gsettings set org.gnome.desktop.peripherals.touchpad send-events enabled
+  else
+    echo "Touchpad disabled."
+
+    xinput disable "$ID"
+    xinput set-prop "$ID" "Device Enabled" 0
+    gsettings set org.gnome.desktop.peripherals.touchpad send-events disabled
   fi
 done
 
-if [ $STATE -eq 1 ]
-then
-  echo "Touchpad disabled."
-else
-  echo "Touchpad enabled."
-fi

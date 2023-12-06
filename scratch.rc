@@ -1,10 +1,9 @@
-#!/bin/bash 
+#!/bin/bash
 
 source /usr/local/scratches/scratch.config;
 source ${scratchGitRoot}/scratch.lib.sh;
 source ${scratchGitRoot}/scratch.aliases;
 
 export PATH=${scratchBin}:$PATH
-alias scratch-git="scratchGit $@"
-alias scratch="scratchGit $@"
-alias scratch-release="scratchGit add .; scratchGit commit -m 'Update'"
+alias scratch="scratch-git $@"
+alias scratch-release="scratch-git add .; scratchGit commit -m 'Update'"

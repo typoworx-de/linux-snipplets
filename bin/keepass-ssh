@@ -1,104 +1,69 @@
-#!/bin/bash
+#!/usr/bin/env perl
 
-throwError() {
-	if [[ $(which zenity) ]];
-	then
-		zenity --error --text="$1";
-	else
-		echo "ERROR: $1";
-	fi
+use strict;
+use warnings;
+use URI;
+use URI::QueryParam;
+use File::Which;
+
+sub throw_error {
+    my ($message) = @_;
+    if (which('zenity')) {
+        $message =~ s/'/\\'/g;  # Escape single quotes
+        system("zenity", "--error", "--text=$message");
+    } else {
+        print "ERROR: $message\n";
+    }
+    exit 1;
 }
 
-urlDecode() {
-	: "${*//+/ }"; echo -e "${_//%/\\x}";
+sub url_decode {
+    my ($string) = @_;
+    $string =~ s/\+/%20/g;
+    return uri_unescape($string);
 }
 
-urlParse() {
-  local -r url=$1 url_part=$2
-  #define url tokens and url regular expression
-  local -r protocol='^[^:]+' user='[^:@]+' password='[^@]+' host='[^:/?#]+' \
-    port='[0-9]+' path='\/([^?#]*)' query='\?([^#]+)' fragment='#(.*)'
-  local -r auth="($user)(:($password))?@"
-  local -r connection="($auth)?($host)(:($port))?"
-  local -r url_regex="($protocol):\/\/($connection)?($path)?($query)?($fragment)?$"
-  #parse url and create an array
-  IFS=',' read -r -a url_arr <<< $(echo $url | awk -v OFS=, \
-    "{match(\$0,/$url_regex/,a);print a[1],a[4],a[6],a[7],a[9],a[11],a[13],a[15]}")
+sub main {
+    # Check if sshpass is installed
+    if (!which('sshpass')) {
+        throw_error("Error: sshpass is not installed. Please install sshpass to run this script.");
+    }
 
-  [[ ${url_arr[0]} ]] || { echo "Invalid URL: $url" >&2 ; return 1 ; }
+    my $url = shift @ARGV;
+    unless (defined $url) {
+        print("Usage: $0 <url>\n");
+        exit 1;
+    }
 
-  case $url_part in
-    protocol) echo ${url_arr[0]} ;;
-    auth)     echo ${url_arr[1]}:${url_arr[2]} ;; # ex: john.doe:1234
-    user)     echo ${url_arr[1]} ;;
-    password) echo ${url_arr[2]} ;;
-    host-port)echo ${url_arr[3]}:${url_arr[4]} ;; #ex: example.com:8080
-    host)     echo ${url_arr[3]} ;;
-    port)     echo ${url_arr[4]} ;;
-    path)     echo ${url_arr[5]} ;;
-    query)    echo ${url_arr[6]} ;;
-    fragment) echo ${url_arr[7]} ;;
-    info)     echo -e "protocol:${url_arr[0]}\nuser:${url_arr[1]}\npassword:${url_arr[2]}\nhost:${url_arr[3]}\nport:${url_arr[4]}\npath:${url_arr[5]}\nquery:${url_arr[6]}\nfragment:${url_arr[7]}";;
-    "")       ;; # used to validate url
-    *)        throwError "Invalid URL part: $url_part" >&2 ; return 1 ;;
-  esac
+    # fix :/// -> ://
+     $url =~ s{:///*}{://}g;
+
+    # Tidy-up URL with (out) In/Complete Credentials
+    $url = uri_unescape($url) if $url =~ /%[0-9A-Fa-f]{2}/;
+
+    my $uri_parts = URI->new($url);
+
+    # Extract components from URI
+    my $protocolHandler = $uri_parts->scheme || '';
+    my $auth = $uri_parts->userinfo || '';
+    my $user = $uri_parts->user || '';
+    my $password = $uri_parts->password || '';
+    my $host = $uri_parts->host || '';
+    my $port = $uri_parts->port || 22;  # Default port
+    my $path = $uri_parts->path || '';
+
+    my $ssh_cmd = sprintf(
+       "/usr/bin/sshpass -p '%s' %s -o StrictHostKeyChecking=no -p %d %s",
+       $password,
+       $protocolHandler,
+       $port,
+       $auth ? "$auth\@$host" : $host
+    );
+
+    # Execute the command
+    print "Executing $ssh_cmd";
+    system($ssh_cmd) == 0 or throw_error("Error executing $ssh_cmd");
 }
 
-
-Cmd="";
-
-# Tidy-up URL with(out) In/Complete Credentials
-Url=${1/\:\/\/\:\@/://};
-Url=${Url/\:\@/@};
-
-Protocol=$(urlParse $Url protocol);
-AuthUser=$(urlParse $Url user);
-AuthPass=$(urlParse $Url password);
-AuthPass=$(urlDecode $AuthPass);
-
-HostName=$(urlParse $Url host);
-HostPort=$(urlParse $Url port);
-
-# Portmappings are in URL format
-# /[localport:remoteip:rempteport]/[another-localport:remoteip:remoteport]
-read -a portmaps <<< $(urlParse $Url path | sed 's/\// /g')
-
-if [[ -z $HostPort ]];
-then
-	# Default Port
-	HostPort=22;
-fi
-
-case "$Protocol" in
-	ssh)	Cmd+="ssh ";
-		;;
-	scp)	Cmd+="scp ";
-		;;
-	*)	throwError "Unknown/Unsupported Protocol!";
-		exit 1;
-		;;
-esac;
-
-Cmd+='-o StrictHostKeyChecking=no ';
-Cmd+="-p ${HostPort} ";
-
-if [[ ! -z $AuthUser ]];
-then
-	Cmd+="${AuthUser}@${HostName} ";
-else
-	Cmd+="${HostName}";
-fi
-
-Notification="";
-for portmap in ${portmaps[@]}
-do
-        Cmd+=" -L ${portmap}";
-	Notification+="Tunneling ${portmap}\n";
-done
-
-if [[ ! -z $Notification ]];
-then
-	notify-send -u low "SSH" -t 10 -a $(basename $0) "${Notification}";
-fi
-
-/usr/bin/sshpass -p "${AuthPass}" $Cmd || throwError "Error executing $Cmd";
+# Call the main function
+main();
