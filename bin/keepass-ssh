@@ -3,8 +3,16 @@
 use strict;
 use warnings;
 use URI;
+use URI::Escape;
 use URI::QueryParam;
 use File::Which;
+use Term::ReadKey;
+
+#use LWP::UserAgent;
+#use JSON;
+
+#my $keepass_api_url = 'http://localhost:12546/api/';
+
 
 sub throw_error {
     my ($message) = @_;
@@ -14,6 +22,13 @@ sub throw_error {
     } else {
         print "ERROR: $message\n";
     }
+
+    # Wait for user to press Ctrl-C
+    print "Press Ctrl-C to exit...\n";
+    local $SIG{INT} = sub { exit; };
+    ReadMode('cbreak');
+    sleep;
+
     exit 1;
 }
 
@@ -22,6 +37,26 @@ sub url_decode {
     $string =~ s/\+/%20/g;
     return uri_unescape($string);
 }
+
+#sub query_keepass {
+#    my ($url, $protocolHandler, $host) = @_;
+#
+#    # Make an HTTP request to the KeePass HTTP API
+#    my $ua = LWP::UserAgent->new;
+#    my $response = $ua->get("$keepass_api_url?protocolHandler=$protocolHandler&host=$host");
+
+#    if ($response->is_success) {
+#        my $credentials = decode_json($response->decoded_content);
+
+        # Extract credentials from the response
+#        my $user = $credentials->{user} || '';
+#        my $password = $credentials->{password} || '';
+
+#        return ($user, $password);
+#    } else {
+#        throw_error("Error querying KeePass HTTP API: " . $response->status_line);
+#    }
+#}
 
 sub main {
     # Check if sshpass is installed
@@ -52,12 +87,17 @@ sub main {
     my $port = $uri_parts->port || 22;  # Default port
     my $path = $uri_parts->path || '';
 
+    # Query KeePass if $user and $password are empty
+#    if ($user eq '' && $password eq '') {
+#        ($user, $password) = query_keepass($url, $protocolHandler, $host);
+#    }
+
     my $ssh_cmd = sprintf(
-       "/usr/bin/sshpass -p '%s' %s -o StrictHostKeyChecking=no -p %d %s",
-       $password,
+       "/usr/bin/sshpass %s %s -o StrictHostKeyChecking=no -p %d %s",
+       length($password) > 0 ? "-p '$password'" : '-P',
        $protocolHandler,
        $port,
-       $auth ? "$auth\@$host" : $host
+       $user ? "$user\@$host" : $host
     );
 
     # Execute the command

@@ -10,8 +10,8 @@ alias phpunit="${scratchBin}/phpunit-7.5.phar"
 
 alias artisan="${scratchBin}/artisan-wrapper"
 alias symfony-console="${scratchBin}/symfony-console-wrapper"
-alias composer="${scratchBin}/composer-wrapper"
-alias composer1="${scratchBin}/composer1-wrapper"
+alias composer="scratch-sudo ${scratchBin}/composer-wrapper"
+alias composer1="scratch-sudo ${scratchBin}/composer1-wrapper"
 
 alias pecl7.0="${scratchBin}/pecl7.0"
 alias pecl7.1="${scratchBin}/pecl7.1"
@@ -19,5 +19,6 @@ alias pecl7.2="${scratchBin}/pecl7.2"
 alias pecl7.4="${scratchBin}/pecl7.4"
 alias pecl8.0="${scratchBin}/pecl8.0"
 
+alias switch-php-version="scratch-sudo ${scratchBin}/switch-php-version"
 alias setfacl-www-data="scratch-sudo ${scratchBin}/setfacl-www-data"
 alias openssl-download-certs="scratch-sudo ${scratchBin}/openssl-download-certs"

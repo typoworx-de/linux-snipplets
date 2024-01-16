@@ -1,8 +1,8 @@
 #!/bin/bash
 PWD=$(pwd)
-PHP_BINARY=$(which php7.2 php7.4 php8.0| head -n1);
 COMPOSER_BINARY=$(which composer2.phar);
 
+REAL_USER=${SUDO_USER:-$USER};
 DIR_USER=$(stat --printf=%U ${PWD});
 WWW_USER=${DIR_USER:-'www-data'};
 
@@ -19,7 +19,7 @@ fi
 
 if [[ -r "${PWD}/composer.json" ]];
 then
-        echo "Determining PHP-Version from composer.json";
+        #echo "Determining PHP-Version from composer.json";
 	COMPOSER_PHP_VERSION=$(jq -r '[.platform.php|tostring]' ${PWD}/composer.json | grep -Eo "[0-9\.]+");
 
 	if [[ -z "$COMPOSER_PHP_VERSION" ]];
@@ -34,20 +34,6 @@ then
 
 	COMPOSER_PHP_VERSION_ARRAY=( ${COMPOSER_PHP_VERSION//./ } )
 	DESIRED_MAJOR_VERSION=${COMPOSER_PHP_VERSION_ARRAY[0]}.${COMPOSER_PHP_VERSION_ARRAY[1]};
-
-	echo "Searching PHP ${DESIRED_MAJOR_VERSION}";
-	PHP_BINARY=$(ls /usr/bin/php${DESIRED_MAJOR_VERSION}* /usr/local/bin/php${DESIRED_MAJOR_VERSION}* 2> /dev/null | head -n1)
-
-	if [[ -z "${PHP_BINARY}" ]];
-	then
-		PHP_BINARY=$(which php${DESIRED_MAJOR_VERSION} 2> /dev/null | head -n1 )
-        fi
-
-	if [[ -z "${PHP_BINARY}" ]];
-	then
-		echo "Error: Unable to find php${DESIRED_MAJOR_VERSION}.* binary!";
-		exit 1;
-	fi
 fi
 
 # Patch Shebang to match desired PHP-Version
@@ -55,13 +41,39 @@ fi
 #echo "Patching composer-shebang"
 #sed -i '1!b;s/env php[^\r\n]*/env '${PHP_VERSION}' -d phar.require_hash=false/' ${COMPOSER_BINARY};
 
-sudo update-alternatives --set php ${PHP_BINARY}
+if which switch-php-version > /dev/null;
+then
+  switch-php-version ${PHP_BINARY};
+else
+  echo "Searching PHP ${DESIRED_MAJOR_VERSION}";
+  PHP_BINARY=$(ls /usr/bin/php${DESIRED_MAJOR_VERSION}* /usr/local/bin/php${DESIRED_MAJOR_VERSION}* 2> /dev/null | head -n1)
 
-echo "Using ${PHP_BINARY} and ${COMPOSER_BINARY} $@";
+  if [[ -z "${PHP_BINARY}" ]];
+  then
+       PHP_BINARY=$(which php${DESIRED_MAJOR_VERSION} 2> /dev/null | head -n1 )
+  fi
+
+  if [[ -z "${PHP_BINARY}" ]];
+  then
+       echo "Error: Unable to find php${DESIRED_MAJOR_VERSION}.* binary!";
+       exit 1;
+  fi
+
+ # sudo update-alternatives --set php ${PHP_BINARY}
+fi
 
 args="$@"
 
 #su ${USER} -pc "php ${COMPOSER_BINARY} ${args}"
-sudo su ${WWW_USER:-$USER} -pc "php ${COMPOSER_BINARY} ${args}"
+
+if [[ "$@" = *"global require"* ]];
+then
+  sudo -E su ${REAL_USER} -c "php ${COMPOSER_BINARY} ${args}";
+else
+  mkdir -p ~/.config/composer || exit 1;
+  sudo setfacl -Rm g:www-data:rx ~/.config/composer || exit 2;
+  sudo -E su ${WWW_USER:-$REAL_USER} -pc "php ${COMPOSER_BINARY} ${args}"
+fi
 
 exit $?
+

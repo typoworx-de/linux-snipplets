@@ -13,6 +13,8 @@ declare -i STATE
 # Attention may be some kind of exclude-list may be required (is on my ToDo)
 #
 
+touch ~/.config/xinput-states;
+
 
 for DEVICE in $(xinput list | grep -Eio 'TouchPad\s*id\=[0-9]{1,2}');
 do
@@ -37,6 +39,8 @@ do
   else
     STATE=$(xinput list-props "$ID" | grep 'Device Enabled' | awk '{print $4}');
   fi
+
+  echo
 
   if [ $STATE -eq 1 ];
   then
