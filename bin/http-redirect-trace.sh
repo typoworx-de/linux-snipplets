@@ -11,4 +11,6 @@ then
   exit 1;
 fi
 
-https ${1} -v --max-redirects 10 -F | grep -oE '^Location.*?[\r\n]'
+https ${1} -v --headers --max-redirects 10 -F | grep -oP '^(HTTP|Location:)[^\r\n]+'
+
+exit $?

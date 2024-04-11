@@ -1,7 +1,13 @@
 #!/bin/bash
+profileCleaner=$(which profile-cleaner);
 
 [[ -d $HOME/.thunderbird ]] || {
   echo "No Thunderbird profile found in ${HOME}/.thunderbird!";
+  exit 1;
+}
+
+[ -z "${profileCleaner}" ] || [ ! -x "${profileCleaner}" ] && {
+  echo "Missing profile-cleaner tool!";
   exit 1;
 }
 
@@ -14,9 +20,7 @@ echo
 echo "Checking for left dead lock-files."
 find $HOME/.thunderbird/ -type f -iname '*.*lock' -delete
 
-[ -x /usr/bin/profile-cleaner ] && {
-  /usr/bin/profile-cleaner t
-}
+profile-cleaner t
 
 echo
 echo "Done."

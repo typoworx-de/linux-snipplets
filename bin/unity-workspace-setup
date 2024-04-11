@@ -1,0 +1,50 @@
+#!/bin/bash
+
+function setWorkspaceGrid()
+{
+  sleep .01
+  gsettings set org.compiz.core:/org/compiz/profiles/unity-lowgfx/plugins/core/ hsize "${1:-4}"
+  gsettings set org.compiz.core:/org/compiz/profiles/unity-lowgfx/plugins/core/ vsize "${2:-4}"
+  gsettings set org.compiz.core:/org/compiz/profiles/unity/plugins/core/ hsize "${1:-4}"
+  gsettings set org.compiz.core:/org/compiz/profiles/unity/plugins/core/ vsize "${2:-4}"
+
+#  dbus-send \
+#    --print-reply \
+#    --type=method_call \
+#    --dest=org.freedesktop.compiz \
+#         /org/compiz/profiles/unity/plugins/core/vsize \
+#         org.freedesktop.compiz.set \
+#         int32:${1:-4}
+
+#  dbus-send \
+#    --print-reply \
+#    --type=method_call \
+#    --dest=org.freedesktop.compiz \
+#         /org/compiz/profiles/unity/plugins/core/hsize \
+#         org.freedesktop.compiz.set \
+#         int32:${2:-4}
+}
+
+function disableWorkspaceGrid()
+{
+  setWorkspaceGrid 0 0
+}
+
+function enableWorkspaceGrid()
+{
+  sleep 5
+  setWorkspaceGrid 0 0
+
+  #notify-send "Initializing Unity workspace-grid $1x$2" --icon=dialog-information
+
+  for x in $(seq 1 $1); do
+    for y in $(seq 1 $2); do
+      setWorkspaceGrid $x $y
+    done
+  done
+
+  dbus-send --session --dest=com.canonical.Unity.LauncherEntry --type=method_call /com/canonical/Unity/LauncherEntry com.canonical.Unity.LauncherEntry.Update
+  dbus-send --session --dest=:1.90 /com/canonical/Unity/Panel/Service com.canonical.Unity.Panel.Service.SyncGeometries
+}
+
+enableWorkspaceGrid 4 4

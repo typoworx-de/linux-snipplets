@@ -66,7 +66,7 @@ args="$@"
 
 #su ${USER} -pc "php ${COMPOSER_BINARY} ${args}"
 
-if [[ "$@" = *"global require"* ]];
+if [[ "$@" = *"global"* || "$@" = *"self-update"* ]];
 then
   sudo -E su ${REAL_USER} -c "php ${COMPOSER_BINARY} ${args}";
 else

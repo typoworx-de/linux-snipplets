@@ -1,0 +1,77 @@
+#!/bin/bash
+
+#sudo apt-get update;
+
+declare -a downgradePackages=();
+
+for package in $(dpkg -l | grep -P '^(ii|rc)' | cut -d' ' -f3);
+do
+  currentVersion=$(dpkg -s "${package}" | grep '^Version:' | cut -d':' -f2 | xargs);
+  downgradeVersion=$(apt-cache madison "${package}" | head -n1 | cut -d'|' -f2 | xargs);
+
+  if [ -z "${downgradeVersion}" ];
+  then
+    continue;
+  fi
+
+  if diff -q <(echo "${currentVersion}") <(echo "${downgradeVersion}") &> /dev/null;
+  then
+    continue;
+  fi
+
+  echo "Downgrade: ${package}=${downgradeVersion} (from ${currentVersion})";
+  downgradePackages+=("${package}=${downgradeVersion}")
+done
+
+echo "Found ${#downgradePackages[@]} packages to downgrade:";
+#echo "${downgradePackages[@]}";
+
+read -p "Do you want to proceed? (y/n) " yn
+
+while true; do
+  case $yn in
+    [yY] ) echo ok, we will proceed;
+	 break;;
+    [nN] ) echo exiting...;
+	 exit;;
+    * ) echo invalid response;;
+  esac
+done
+
+sudo aptitude install \
+  -s -y \
+  -o Aptitude::ProblemResolver::SolutionCost='downgrade' "${downgradePackages[@]}" \
+  && sudo aptitude install \
+    -y \
+    -o Aptitude::ProblemResolver::SolutionCost='downgrade' "${downgradePackages[@]}" \
+  || echo "Downgrade failed!" \
+;
+
+exit $?;
+
+#sudo apt-get install \
+#  --dry-run \
+#  --reinstall -y \
+#  --allow-downgrades \
+#  --allow-change-held-packages \
+#  --no-install-recommends \
+#  -o Debug::pkgDepCache::Marker=yes \
+#  -o Debug::pkgDepCache::AutoInstall=yes \
+#  -o Debug::pkgProblemResolver=yes \
+#  -o Debug::pkgProblemResolver::ShowScores=yes \
+#  "${downgradePackages[@]}" \
+# && \
+#  sudo apt-get install \
+#  --reinstall -y \
+#  --allow-downgrades \
+#  --allow-change-held-packages \
+#  --no-install-recommends \
+#  -o Debug::pkgDepCache::Marker=yes \
+#  -o Debug::pkgDepCache::AutoInstall=yes \
+#  -o Debug::pkgProblemResolver=yes \
+#  -o Debug::pkgProblemResolver::ShowScores=yes \
+#  "${downgradePackages[@]}" \
+# || echo "Downgrade failed!"
+#;
+
+exit $?

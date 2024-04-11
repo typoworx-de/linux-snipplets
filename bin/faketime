@@ -1,0 +1,84 @@
+#!/bin/bash
+_script=$(realpath $0)
+_faketimebin=$(which -a faketime | grep -v "${_script}" | head -n1);
+
+if [ -z "${_faketimebin}" ];
+then
+  echo "Error missing faketime!";
+  exit 2;
+fi
+
+# Helper function to display usage
+show_usage() {
+    echo "Usage: $0 [--date YYYY-MM-DD] [--from HH:MM[:SS]] [--to HH:MM[:SS]] -- command_to_run"
+    echo -e "\nOptions:"
+    echo "  --date   Specify the date (default is today)."
+    echo "  --from   Specify the start time for the range (default is now)."
+    echo "  --to     Specify the end time for the range (default is now)."
+    echo -e "\nExample:"
+    echo "  $0 --date 2024-02-13 --from 08:00 --to 18:00 -- echo 'This is a test'"
+}
+
+# Parse arguments
+POSITIONAL_ARGS=()
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        --from)
+        FROM_TIME="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        --to)
+        TO_TIME="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        --date)
+        FAKE_DATE="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        --) # End of all options
+        shift # past --
+        break # end loop
+        ;;
+        -h|--help)
+        show_usage
+        exit 1
+        ;;
+        *) # unknown option
+        POSITIONAL_ARGS+=("$1") # save it in an array for later
+        shift # past argument
+        ;;
+    esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+# Validate and set the date
+if [ -z "$FAKE_DATE" ]; then
+    FAKE_DATE=$(date +%Y-%m-%d) # Use current date if not specified
+fi
+
+# Generate a random time if both --from and --to are specified
+if [ ! -z "$FROM_TIME" ] && [ ! -z "$TO_TIME" ]; then
+    START_SECONDS=$(date -d "$FAKE_DATE $FROM_TIME" +%s)
+    END_SECONDS=$(date -d "$FAKE_DATE $TO_TIME" +%s)
+    RANDOM_SECONDS=$(($START_SECONDS + RANDOM % ($END_SECONDS - $START_SECONDS)))
+    FAKE_TIME=$(date -d "@$RANDOM_SECONDS" +'%Y-%m-%d %H:%M:%S')
+else
+    # Use the current time if from and to are not specified
+    FAKE_TIME="$FAKE_DATE $(date +%H:%M:%S)"
+fi
+
+# Run the command with faketime
+if [ "${#POSITIONAL_ARGS[@]}" -eq 0 ]; then
+    echo "Error: No command specified."
+    show_usage
+    exit 1
+fi
+
+echo "Faking time to: $FAKE_TIME"
+${_faketimebin} "${FAKE_TIME}" ${POSITIONAL_ARGS[@]}
+exit $?

@@ -28,13 +28,16 @@ alias docker-compose-service-rm="docker compose rm --stop"
 alias docker-dive="docker run -ti --rm  -v /var/run/docker.sock:/var/run/docker.sock wagoodman/dive"
 alias docker-dfimage="docker run -v /var/run/docker.sock:/var/run/docker.sock --rm alpine/dfimage"
 
-function removeAlias()
+removeAlias()
 {
-  LC_MESSAGES=C type $1 2> /dev/null | grep -c 'aliased' > /dev/null && unalias $1;
+  LC_MESSAGES=C type "$1" 2> /dev/null | grep -c 'aliased' > /dev/null && unalias "$1"
 }
 
 removeAlias unalias docker-compose-service-restart
-function docker-compose-service-restart
+
+# sh compatibility shim
+alias docker-compose-service-restart="docker_compose_service_restart"
+docker_compose_service_restart()
 {
   docker compose rm --stop -f $@;
   docker compose up -d $@;

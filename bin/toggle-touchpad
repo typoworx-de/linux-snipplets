@@ -28,7 +28,7 @@ do
 
   if [[ "${#@}" > 0 ]];
   then
-    case "$1" in
+    case "${1/--/}" in
       enable|enabled|on):
 	STATE=1;;
       disable|disabled|off):

@@ -1,0 +1,4 @@
+#!/bin/bash
+sudo patch /usr/bin/tuxedo-tomte < /usr/bin/tuxedo-tomte.patch
+
+exit $?
