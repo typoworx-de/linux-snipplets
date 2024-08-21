@@ -36,7 +36,7 @@ do
      sudo find /var/cache/apt/archives -type f -iname "*${singlePackage//:/*}*" -exec dpkg -x {} / \;
    done
 
-   sudo apt-get -o Dpkg::Options::="--force-overwrite,--force-confnew,--force-confask" -y install --reinstall --purge --no-install-recommends ${packages} \
+   sudo apt-get -o Dpkg::Options::="--force-overwrite,--force-confnew,--force-confask" -fy install --reinstall --purge --no-install-recommends ${packages} \
    || sudo apt-get install -fy;
 done
 
