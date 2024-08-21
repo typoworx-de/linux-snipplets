@@ -1,0 +1,31 @@
+
+#!/bin/bash
+target="$1";
+targetdev="$2"
+
+if [ -z "${target}" ];
+then
+  echo "Syntax: "$(basename $0)" [chroot-path]";
+  exit 1;
+fi
+
+if [ -n "${targetdev}" ] && ! mountpoint -q "${target}/${m}";
+then
+  echo "Mounting ${targetdev} > ${target}";
+  sudo mount "${targetdev}" "${target}" || exit $?;
+fi
+
+for m in '/dev/' '/dev/pts/' '/proc' '/sys';
+do
+  if ! mountpoint -q "${target}/${m}";
+  then
+    echo "Mounting ${m} > ${target}/${m}";
+    if ! sudo mount -o bind "${m}" "${target}/${m}";
+    then
+      echo -n " -> Error!";
+      exit $?;
+    fi
+  fi
+done
+
+sudo chroot "${target}";

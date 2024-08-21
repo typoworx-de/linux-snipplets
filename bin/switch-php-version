@@ -1,0 +1,40 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $version_or_path = $ARGV[0];
+
+if ($version_or_path && $version_or_path =~ /^\d+\.\d+$/) {
+    my $php_executable = `which php$version_or_path`;
+    chomp($php_executable);
+    if (-x $php_executable) {
+        system("sudo update-alternatives --set php $php_executable");
+        print "PHP version $version_or_path set as default.\n";
+    } else {
+        print "Error: PHP binary for version $version_or_path not found.\n";
+    }
+} else {
+    # If no version provided, select the most recent PHP version in $PATH
+
+    my $path = $ENV{'PATH'};
+    my @paths = split /:/, $path;
+
+    my $most_recent_php;
+    foreach my $p (@paths) {
+      my $php_versions = `ls -1 $p/php* 2>/dev/null | grep -oE '.*?php[0-9\.]*\$' | uniq -u | sort -V | tail -n 1`;
+      chomp($php_versions);
+
+      if ($php_versions) {
+        $most_recent_php = $php_versions;
+        last;
+      }
+    }
+    
+    if (-x $most_recent_php) {
+        system("sudo update-alternatives --set php $most_recent_php");
+        print "Most recent PHP version $most_recent_php set as default.\n";
+    } else {
+        print "Error: No valid PHP version found.\n";
+    }
+}

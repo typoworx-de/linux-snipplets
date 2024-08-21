@@ -1,5 +1,6 @@
 %sudo		 ALL = NOPASSWD: /usr/local/scratches/bin/scratch-sudo
-%scratch-sudoers ALL = NOPASSWD: /usr/local/scratches/bin/scratch-sudo
 
-%scratch-sudoers ALL = NOPASSWD:/usr/local/scratches/bin/pulseaudio-restart
-%scratch-sudoers ALL = NOPASSWD:alsa
+%scratch-sudoers ALL = NOPASSWD: /usr/local/scratches/bin/scratch-sudo
+%scratch-sudoers ALL = NOPASSWD: /usr/local/scratches/bin/switch-php-version
+%scratch-sudoers ALL = NOPASSWD: /usr/local/scratches/bin/pulseaudio-restart
+#%scratch-sudoers ALL = NOPASSWD: /usr/sbin/alsa

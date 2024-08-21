@@ -1,4 +1,4 @@
-alias docker-timed="time docker"
+qalias docker-timed="time docker"
 alias docker-run="docker run --rm -it"
 alias docker-build="docker-timed buildx build --progress=plain --cache-to=type=inline --always-recreate-deps --build-arg BUILD_TIME=$(date +%s)"
 alias docker-lint="docker run --rm -i hadolint/hadolint <"
@@ -23,6 +23,9 @@ alias docker-compose-service-run="docker-compose run --rm"
 alias docker-compose-service-rm="docker-compose rm --stop"
 #alias docker-compose-service-restart="docker-compose rm --stop -f $@; docker-compose up -d $@"
 
+# Misc Docker Tools
+alias docker-dive="docker run -ti --rm  -v /var/run/docker.sock:/var/run/docker.sock wagoodman/dive"
+alias docker-dfimage="docker run -v /var/run/docker.sock:/var/run/docker.sock --rm alpine/dfimage"
 
 function removeAlias()
 {

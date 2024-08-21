@@ -1,3 +1,6 @@
+*.log
+*.tmp
 *.swp
+.idea
 ./usr/*
 ./prototypes/*

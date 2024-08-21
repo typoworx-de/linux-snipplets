@@ -1,0 +1,227 @@
+#!/bin/bash
+
+_name=$(basename $0)
+_pwd=$(pwd)
+syncProfilesDir=$(realpath $(dirname $0)"/../share")
+
+
+function syntax() {
+  echo "Syntax: $(basename $0) -s {source-browser -t {target-browser}";
+  echo "-s|--source	> one of:"
+  echo "-t|--target     > google-chrome|chromium|brave or file-path";
+  echo "-u|--user	optional: user name or absolute-path for profiles,"
+  echo "		default is ${HOME} of current user"
+  echo "-c|--clean	clean target profile-dir deleting unmatched from source"
+  echo "-o|--optimize   inplace-optimisation of current chrome-profile"
+  echo "-f|--force	creates target directory if not existing"
+  echo "-d|--dry-run	dry-run without doing anything"
+  echo "-v|--verbose	show verbose output"
+  exit 1
+}
+
+[ "${#@}" == 0 ] && syntax;
+
+declare -i dryRun=0
+declare -i force=0
+declare -i clean=0
+declare -i verbose=0
+declare -i optimize=0
+declare taskId=$(date '+%d%m%Y-%H%M%S')
+declare userDir=~;
+declare browserName='na'
+declare sourceBrowser=''
+declare targetBrowser=''
+
+getopts=`getopt -o t:s:u:dfhcov --long source:,target:,user:,force,dry-run,clean,optimize,verbose,help -n "$0" -- "$@"`
+
+eval set -- "$getopts"
+while true ; do
+    case "$1" in
+        -s|--source)
+                sourceBrowser="${2}";
+                shift 2;;
+        -t|--target)
+                targetBrowser="${2}";
+
+                shift 2;;
+        -u|--user)
+		[ -d "${2}" ] && {
+		  userDir="${2}";
+		} || {
+		  userDir="/home/${2}";
+		}
+                shift 2;;
+        -f|--force)
+                force=1;
+                shift 1;;
+        -c|--clean)
+                clean=1;
+                shift 1;;
+        -o|--optimize)
+                force=1;
+		clean=1;
+		optimize=1;
+		shift 1;;
+        -d|--dry-run)
+		dryRun=1;
+                shift 1;;
+        -v|--verbose)
+		verbose=1;
+		shift 1;;
+        --) shift; break;;
+        *|-h|--help)
+                syntax;
+                exit 1;;
+    esac
+done
+
+
+if [ -z "${sourceBrowser}" ];
+then
+  echo "Error no source browser given!"
+  exit 1
+elif [ ! -d "${sourceBrowser}" ];
+then
+  sourceProfileRoot=$(readlink -f "${userDir:-~}/.config/${sourceBrowser}/")
+else
+  sourceProfileRoot=$(realpath "${sourceBrowser}")
+fi
+
+if [ "${optimize}" -eq 1 ];
+then
+
+  targetBrowser="${sourceBrowser}"
+  targetProfileRoot="${sourceProfileRoot}.optimize-${taskId:-0}"
+else
+  targetProfileRoot="${targetBrowser}"
+
+  if [ -z "${targetBrowser}" ];
+  then
+    echo "Error no target browser given!"
+    exit 1
+  elif [ ! -d "${targetBrowser}" ];
+  then
+    targetProfileRootSanitized=$(readlink -f "${userDir:-~}/.config/${targetBrowser}/")
+
+    if [ -d "${targetProfileRootSanitized}" ];
+    then
+      targetProfileRoot=$(realpath "${targetProfileRootSanitized}")
+    fi
+  fi
+
+  if [ ! -d "${targetProfileRoot}" ];
+  then
+    echo "Target path ('${targetProfileRoot}') does not exist. Create it? [yn]: "
+    read yn
+    if [[ "$yn" =~ [yY] ]];
+    then
+      mkdir -p "${targetProfileRoot}" || exit 3;
+      targetProfileRoot=$(realpath "${targetProfileRoot}")
+    else
+      exit 2;
+    fi
+  fi
+fi
+
+if [ ! -d "${sourceProfileRoot}" ];
+then
+  echo "Error ${sourceProfileRoot} not found!"
+  exit 1
+fi
+
+if [ -z "${force}" ];
+then
+  if [ ! -d "${targetProfileRoot}" ];
+  then
+    echo "Error ${targetProfileRoot} not found! Create directory or use -f"
+    exit 1
+  fi
+fi
+
+declare -a args=()
+declare logFile="${_pwd}/${_name}.${browserName}.log";
+browserName=$(basename ${sourceProfileRoot});
+
+if [ "${dryRun}" == 1 ];
+then
+  echo "Running DRY RUN";
+
+ args+=(--dry-run)
+fi
+
+if [ "${clean}" == 1 ];
+then
+ args+=(--delete --delete-after --delete-excluded)
+fi
+
+if [ "${verbose}" == 0 ];
+then
+  args+=( --info=progress2 )
+fi
+
+args+=(--progress)
+args+=(--log-file="${logFile}")
+args+=(--links --copy-links --copy-dirlinks)
+args+=(--times --prune-empty-dirs)
+
+#args+=('--filter=":+ '${rulesFile}'"')
+
+tmpRuleFile=$(mktemp -t $(basename $0).$$.XXXXXXXXX);
+for rulesFile in google-chrome-sync.essential-files.rules google-chrome-sync.no-google-sync.rules;
+do
+  [ -r "${syncProfilesDir}/${rulesFile}" ] || {
+    printf 'Error reading: %s\n' "${syncProfilesDir}/${rulesFile}";
+    continue;
+  }
+
+  cat "${syncProfilesDir}/${rulesFile}" >> "${tmpRuleFile}"
+done
+
+args+=('--filter=merge '${tmpRuleFile}'')
+args+=('--exclude=SingletonCookie' '--exclude=SingletonSocket' '--exclude=SingletonLock' '--exclude="gtk-*/*"')
+
+#args+=('--filter=merge '${syncProfilesDir}'/google-chrome-sync.essential-files.rules')
+#args+=('--filter=merge '${syncProfilesDir}'/google-chrome-sync.no-google-sync.rules')
+#args+=('--filter="- **"')
+
+#echo rsync -av \
+#  "${args[@]}" \
+#  "${chromeProfileRoot}" "${targetProfileRoot}" \
+#;
+#exit
+
+if [ -f "${logFile}" ];
+then
+  rm -f "${logFile}";
+fi
+
+(
+  mkdir -p "${targetProfileRoot}";
+  cd "${targetProfileRoot}";
+  rsync -av --progress \
+    "${args[@]}" \
+    "${sourceProfileRoot}/" "${targetProfileRoot}/" \
+  && {
+    if [ "${optimize}" -eq 1 ];
+    then
+      mv "${sourceProfileRoot}" "${sourceProfileRoot}~backup-$(date '+%d%m%Y-%H%M%S')" \
+      && mv "${targetProfileRoot}" "${sourceProfileRoot}" \
+      && echo "Backed up profile to: ${sourceProfileRoot}~backup-$(date '+%d%m%Y-%H%M%S')";
+      echo done
+    fi
+  } || {
+    echo "[error: rsync -av" \
+      "${args[@]}" \
+      "${sourceProfileRoot}" "${targetProfileRoot}" \
+    ;
+    echo;
+    grep -E 'rsync:|rsync error:' < "${logFile}";
+  }
+)
+
+if [ -f "${tmpRuleFile}" ];
+then
+ rm "${tmpRuleFile}";
+fi
+
+exit $?

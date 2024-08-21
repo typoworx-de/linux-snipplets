@@ -33,10 +33,10 @@ do
    echo "-----------------------------------------------------------";
    echo
    echo "Checking for left dead lock-files."
-   find "${profileDir}" -type f -name 'SingletonLock' -delete
+   find "${path}" -type f -name 'SingletonLock' -delete
 
    echo "Running profile-cleaner ..."
-   profile-cleaner gc -p "${profileDir}"
+   profile-cleaner gc -p "${path}"
 done
 
 echo

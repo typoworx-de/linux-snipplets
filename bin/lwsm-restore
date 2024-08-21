@@ -1,0 +1,12 @@
+#!/bin/bash
+
+sleep 2
+
+zenity \
+  --question \
+  --text='Restore previous window-session?' \
+|| exit 0;
+
+/usr/local/bin/lwsm restore;
+
+exit $?
