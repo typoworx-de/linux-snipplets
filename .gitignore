@@ -1,6 +1,7 @@
 *.log
 *.tmp
 *.swp
+*.save
 .idea
 ./usr/*
 ./prototypes/*
