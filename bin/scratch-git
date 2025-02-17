@@ -2,4 +2,18 @@
 . /usr/local/scratches/scratch.config;
 
 gitRoot=$(realpath ${scratchGitRoot});
-git --git-dir=${gitRoot}/.git --work-tree=${gitRoot} $@
+
+function scratchGit()
+{
+  git --git-dir=${gitRoot}/.git --work-tree=${gitRoot} $@;
+  exit $?;
+}
+
+if [[ "$@" == "auto-commit" ]];
+then
+#  scratchGit status
+  scratchGit add .
+  scratchGit commit -m "[update] "$(date '+%d-%m-%Y')
+else
+  scratchGit $@
+fi

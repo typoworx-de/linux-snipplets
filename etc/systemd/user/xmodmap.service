@@ -1,0 +1,9 @@
+[Unit]
+Description=Load Xmodmap
+
+[Service]
+ExecStart=/usr/local/scratches/etc/X11/xinit/xmodmap.sh
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

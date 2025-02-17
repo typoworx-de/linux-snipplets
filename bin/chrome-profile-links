@@ -33,4 +33,21 @@ do
    echo "Path:		${pathName}";
    echo "Profile-ID:	${profileId}";
    echo "Profile-name:	${profileName}";
+
+   desktopFileName="Google-Chrome-${profileName}.desktop";
+   desktopFileTemplate=("${chromeProfileTemplate[@]}");
+   desktopFileTemplate=${desktopFileTemplate//%%profileName%%/$profileName};
+   desktopFileTemplate=${desktopFileTemplate//%%profileId%%/$profileId};
+   desktopFileTemplate=${desktopFileTemplate//%%profilePath%%/$path};
+   desktopFileTemplate=${desktopFileTemplate//%%profilePathName%%/$pathName};
+
+   #-printf "%s\n" ${desktopFileTemplate};
+   #-exit
+
+   printf "%s\n" ${desktopFileTemplate} > /tmp/$desktopFileName;
+
+   desktop-file-install --dir ~/.local/share/applications /tmp/$desktopFileName;
+   rm  /tmp/$desktopFileName;
 done
+
+update-desktop-database -q;

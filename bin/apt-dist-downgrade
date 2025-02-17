@@ -49,6 +49,7 @@ sudo aptitude install \
 
 exit $?;
 
+# Does not work yet using apt-get
 #sudo apt-get install \
 #  --dry-run \
 #  --reinstall -y \
@@ -74,4 +75,4 @@ exit $?;
 # || echo "Downgrade failed!"
 #;
 
-exit $?
+#exit $?

@@ -19,6 +19,9 @@ function restartPulseAudio()
   pulseaudio --start;
   sudo alsa force-reload;
 
+  systemctl --user restart pipewire-pulse;
+  systemctl --user restart pipewire;
+
   exit $?
 }
 

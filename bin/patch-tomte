@@ -1,0 +1,8 @@
+#!/bin/bash
+
+sudo cp /usr/bin/tuxedo-tomte /usr/bin/tuxedo-tomte~org;
+sudo cp /usr/share/perl5/Tomte/Presets.pm /usr/share/perl5/Tomte/Presets.pm~org;
+
+sudo patch /usr/share/perl5/Tomte/Presets.pm < /usr/share/perl5/Tomte/Presets.pm.patch \
+&& echo "Done." \
+|| { echo "Error!"; exit $?; }

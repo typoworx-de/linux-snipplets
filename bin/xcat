@@ -6,7 +6,7 @@
 
 function xcat()
 {
-  fInfo=$(file "$1");
+  fInfo=$(file $(realpath "$1"));
 
   method='';
   args='';
@@ -40,7 +40,7 @@ function xcat()
     return 1;
   fi
 
-  $(which "${method}") "${args}" "$1" >&1;
+  $(which "${method}") "${args}" "$1" >&1 2>/dev/null || exit $?;
 
   return $?;
 }
@@ -51,12 +51,14 @@ then
   exit 1;
 fi
 
-if [ -f "$1" ];
+declare archive=$(realpath "$1");
+
+if [ -f "$archive" ];
 then
-  xcat "${1}" || exit 1;
+  xcat "${archive}" || exit 1;
 elif [ -d "$1" ]
 then
-  find "$1" -maxdepth 2 -regextype posix-extended -regex '^.*\.(txt|lst|gz|bz|bz2|zip|7z)$' -print0 | while IFS= read -r -d '' file;
+  find "$archive" -maxdepth 2 -regextype posix-extended -regex '^.*\.(txt|lst|gz|bz|bz2|zip|7z)$' -print0 | while IFS= read -r -d '' file;
   do
     xcat "${file}";
   done

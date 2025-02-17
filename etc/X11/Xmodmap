@@ -1,0 +1,3 @@
+# Disable Tuxedo-Touchpad Quick-Toggle Key in upper Touchpad corner
+#keycode 191=NoSymbol
+#keycode 133=NoSymbol

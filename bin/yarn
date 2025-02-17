@@ -1,3 +1,16 @@
 #!/bin/bash
-npx nvm-auto
-yarn "$@"
+_pwd=$(pwd)
+_yarn=$(which -a yarn | tail -n1)
+
+if [ ! -x "${_yarn}" ];
+then
+  echo "No yarn found!";
+  exit 100;
+fi
+
+if [ -f "${_pwd}/package.json" ];
+then
+  npx nvm-auto
+fi
+
+${_yarn} "$@"

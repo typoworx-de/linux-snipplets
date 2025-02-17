@@ -1,0 +1,11 @@
+[Unit]
+Description=USB Wake-up Service
+After=suspend.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'echo 0 | /usr/bin/tee /sys/module/usbcore/parameters/autosuspend'
+
+[Install]
+WantedBy=suspend.target
+WantedBy=wakeup.target

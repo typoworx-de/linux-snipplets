@@ -1,0 +1,47 @@
+#!/bin/bash
+
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <zip-file1> [<zip-file2> ...] or $0 *.zip"
+    exit 1
+fi
+
+function extractPackage()
+{
+  extension=$(realpath "$1")
+  target=$(basename "${extension}" .zip)
+
+  if [ ! -z "$2" ];
+  then
+    target=$(realpath "$2")
+  fi
+
+  if [ -d "${target}" ];
+  then
+    mkdir "${target}" || {
+      echo "[!] Error given target does not exist!";
+      exit 1;
+    }
+  fi
+
+  if [ ! -f "${extension}" ];
+  then
+    echo "[!] Error given source does not exist!";
+    exit 1;
+  fi
+
+  if ! file "${extension}" | grep -q 'Zip archive data'; then
+    echo "Error: File '$ZIP_FILE' is not a valid ZIP file!"
+    exit 1
+  fi
+
+  unzip -qo "${extension}" -d "${target}" || {
+   rmdir "${target}";
+   exit 2;
+  }
+}
+
+
+for zip_file in "$@";
+do
+  extractPackage "$zip_file"
+done

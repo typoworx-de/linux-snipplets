@@ -1,0 +1,51 @@
+[Unit]
+Description=Run profile-cleaner at user login
+After=default.target
+
+[Service]
+Type=oneshot
+#ExecStart=/bin/bash -c 'pc=$(command -v profile-cleaner); for i in gc ff tb; do "$pc" "$i" || true; done;'
+#ExecStart=/bin/bash -c "\
+#  pc=$(command -v profile-cleaner); \
+#  ( \
+#    echo 0; echo '# Starting profile cleanup...'; \
+#    profiles=('gc' 'ff' 'tb'); \
+#    total=${#profiles[@]}; \
+#    for i in ${!profiles[@]}; do \
+#      progress=$(( (i + 1) * 100 / total )); \
+#      echo $progress; echo '# Cleaning: '${profiles[i]}'...'; \
+#      \"$pc\" \"${profiles[i]}\"; \
+#    done; \
+#    echo 100; echo '# Cleanup completed successfully.'; \
+#  ) | zenity --progress --title='Profile Cleaner' --auto-close --no-cancel --width=400 --height=150"
+
+ExecStart=/bin/bash -c "\
+  pc=$(command -v profile-cleaner); \
+  error_occurred=0; \
+  ( \
+    echo 0; echo '# Starting profile cleanup...'; \
+    profiles=('gc' 'ff' 'tb'); \
+    total=${#profiles[@]}; \
+    for i in ${!profiles[@]}; do \
+      progress=$(( (i + 1) * 100 / total )); \
+      echo $progress; echo '# Cleaning: '${profiles[i]}'...'; \
+      if ! \"$pc\" \"${profiles[i]}\"; then \
+        error_occurred=1; \
+        notify-send 'Profile Cleaner' 'Error cleaning ${profiles[i]}!' -u critical; \
+      fi; \
+    done; \
+    if [ $error_occurred -eq 0 ]; then \
+      echo 100; echo '# Cleanup completed successfully.'; \
+      notify-send 'Profile Cleaner' 'Cleanup completed successfully.'; \
+    else \
+      echo 100; echo '# Cleanup completed with errors!'; \
+      notify-send 'Profile Cleaner' 'Cleanup completed with errors!' -u critical; \
+    fi; \
+  ) | zenity --progress --title='Profile Cleaner' --auto-close --no-cancel --width=400 --height=150"
+
+ExecStartPost=/usr/bin/notify-send "Profile Cleaner" "Cleanup completed successfully."
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+
+[Install]
+WantedBy=default.target

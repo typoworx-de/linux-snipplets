@@ -1,0 +1,40 @@
+#!/bin/bash
+declare -a excludeDirs=( "blob_storage/*" "Web\ Data" "File\ System" "Local\ Storage" "Service\ Worker" "VideoDecodeStats" "Sync\ Data" "IndexedDB" "*.log")
+declare -a tarArgs=()
+
+tarArgs+=($(printf %s "${excludeDirs[@]/#/ --exclude=}"))
+
+declare date=$(date '+%Y-%m-%d--%H-%M')
+declare profileId="${1}"
+declare backupName="${2}"
+declare profilePath=~/$(printf %q ".config/chromium/${1}")
+
+eval ls -lah "${profilePath}" 2>&1 > /dev/null || {
+  echo "Profile '${profileId}' (${profilePath}) not found!";
+  exit 1;
+}
+
+[ -d ~/.config/chromium/Profile~Backups ] || {
+  mkdir -p ~/.config/chromium/Profile~Backups
+}
+
+archiveFormat="${3:-tar.bz2}"
+archiveName="${1}.${date}.${archiveFormat}";
+
+[ -z "${backupName}" ] && {
+  prefsFile="${profilePath}/Preferences"
+  profileName=$(eval cat "${prefsFile}" | jq -r '.profile.name')
+}
+
+[ -z "${profileName}" ] || {
+  archiveName=$(printf %q "${1/ /-}.${profileName}.${date}.${archiveFormat}")
+}
+
+echo "Creating ${archiveName} ...";
+
+(
+  cd ~/.config/chromium/Profile~Backups;
+  eval tar cvjf ${archiveName} ${profilePath} ${tarArgs[@]}
+)
+
+exit $?
