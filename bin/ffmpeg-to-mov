@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+trap 'echo; echo "[!] Interrupted by user. Exiting."; exit 130' INT
+
+searchPattern="*.mp4"
+
+usage() { echo "Usage: $0 [-s searchPattern_or_dir_or_file]"; exit 1; }
+
+while getopts "s:h" opt; do
+  case ${opt} in
+    s) searchPattern="${OPTARG}" ;;
+    h|*) usage ;;
+  esac
+done
+
+# Resolve search root + pattern from -s
+if [[ -d "${searchPattern}" ]]; then
+  searchDir="${searchPattern}"
+  searchName="*.mp4"
+elif [[ "${searchPattern}" == */* ]]; then
+  searchDir="${searchPattern%/*}"
+  searchName="${searchPattern##*/}"
+else
+  searchDir="."
+  searchName="${searchPattern}"
+fi
+
+command -v ffprobe >/dev/null 2>&1 || { echo "ffprobe not found"; exit 1; }
+command -v ffmpeg  >/dev/null 2>&1 || { echo "ffmpeg not found"; exit 1; }
+
+outDir="${PWD}"   # WRITE HERE ONLY (no mkdir)
+
+# --- helpers ---
+check_disk_space() {
+  local inputFile="$1" outPath="$2"
+  local inputSize freeBytes minNeeded oneGiB
+  inputSize="$(stat -c%s -- "${inputFile}" 2>/dev/null || stat -f%z -- "${inputFile}")"
+  if df --output=avail -B1 -- "${outPath}" >/dev/null 2>&1; then
+    freeBytes="$(df --output=avail -B1 -- "${outPath}" | awk 'NR==2{print $1}')"
+  else
+    freeBytes="$(df -k -- "${outPath}" | awk 'NR==2{print $4*1024}')"
+  fi
+  minNeeded=$(( inputSize * 2 ))
+  oneGiB=$(( 1024 * 1024 * 1024 ))
+  (( minNeeded < oneGiB )) && minNeeded="${oneGiB}"
+  (( freeBytes < minNeeded )) && { echo "❌ Not enough disk space in ${outPath}"; return 1; }
+  return 0
+}
+
+fraction_to_int() {
+  local frac="$1"
+  if [[ "${frac}" == */* ]]; then
+    awk -v f="${frac}" 'BEGIN{split(f,a,"/"); if(a[2]==0){print 0}else{printf "%.0f", a[1]/a[2]}}'
+  else
+    awk -v f="${frac}" 'BEGIN{printf "%.0f", f}'
+  fi
+}
+
+get_duration() {
+  local f="$1" v nb avg
+  v="$(ffprobe -v error -select_streams v:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 -- "${f}" | head -n1)"
+  [[ -n "${v}" && "${v}" != "N/A" ]] && { printf '%s' "${v}"; return 0; }
+  v="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 -- "${f}" | head -n1)"
+  [[ -n "${v}" && "${v}" != "N/A" ]] && { printf '%s' "${v}"; return 0; }
+  nb="$(ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames -of default=noprint_wrappers=1:nokey=1 -- "${f}" | head -n1)"
+  avg="$(ffprobe -v error -select_streams v:0 -show_entries stream=avg_frame_rate -of default=noprint_wrappers=1:nokey=1 -- "${f}" | head -n1)"
+  [[ -n "${nb}" && "${nb}" != "N/A" && "${avg}" == */* ]] &&
+    awk -v n="${nb}" -v r="${avg}" 'BEGIN{split(r,a,"/"); if(a[2]==0){exit 1} printf "%.6f", n/(a[1]/a[2]) }'
+}
+
+durations_close() {
+  local a="$1" b="$2"
+  awk -v a="${a}" -v b="${b}" -v A="0.5" -v R="0.01" '
+    function abs(x){return x<0?-x:x}
+    BEGIN{ if(a==""||b==""){ exit 1 }
+      d=abs(a-b); ref=(a>b?a:b)
+      if(d<=A || d<=ref*R) exit 0; else exit 1 }'
+}
+
+format_duration_hms() {
+  local dur="$1"
+  awk -v t="${dur}" 'BEGIN {
+    h=int(t/3600); m=int((t%3600)/60); s=int(t%60)
+    printf "%02d:%02d:%02d", h, m, s
+  }'
+}
+
+
+# --- build list: prune CURRENT dir so we never re-scan outputs ---
+searchAbs="$(readlink -f -- "${searchDir}" 2>/dev/null || echo "${searchDir}")"
+mapfile -d '' -t files < <(
+  LC_ALL=C find -P "${searchAbs}" \
+    \( -path "${PWD}" -o -path "${PWD}/*" \) -prune -o \
+    \( ! -type d -iname "${searchName}" -print0 \)
+)
+
+if (( ${#files[@]} == 0 )); then
+  echo "⚠️  No input files found under ${searchAbs} for pattern ${searchName}."
+  exit 0
+fi
+
+# --- process ---
+for inputFile in "${files[@]}"; do
+  inputFile="${inputFile%$'\r'}"
+  [[ ! -e "${inputFile}" ]] && { echo "❌ Missing: ${inputFile}"; continue; }
+
+  inputReal="$(readlink -f -- "${inputFile}" 2>/dev/null || echo "${inputFile}")"
+  baseName="${inputReal##*/}"
+
+  # strip ONLY the final extension (multi-dot safe)
+  filenameOnly="$(printf '%s' "${baseName}" | rev | cut -d '.' -f 2- | rev)"
+  [[ -z "${filenameOnly}" || "${filenameOnly}" == "${baseName}" ]] && filenameOnly="${baseName%.*}"
+
+  # WRITE OUTPUT TO CURRENT DIR
+  outputFile="${outDir}/${filenameOnly}.mov"
+
+  # If output exists, compare durations
+  if [[ -e "${outputFile}" ]]; then
+    srcDur="$(get_duration "${inputReal}")"
+    outDur="$(get_duration "${outputFile}")"
+    if [[ -n "${srcDur}" && -n "${outDur}" ]] && durations_close "${srcDur}" "${outDur}"; then
+      echo "⏭️  Skipping (duration match: $(format_duration_hms "${outDur}")): ${baseName}"
+      continue
+    else
+      echo "♻️  Re-encoding ${baseName} (src=${srcDur:-?}s, out=${outDur:-?}s)"
+    fi
+  fi
+
+  echo "⏳ Converting: ${baseName} → ${filenameOnly}.mov"
+
+  # Probe resolution & fps
+  res="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0:s=x -- "${inputReal}" || echo "error")"
+  fpsFrac="$(ffprobe -v 0 -select_streams v:0 -of csv=p=0 -show_entries stream=avg_frame_rate -- "${inputReal}" || echo "error")"
+  [[ "${res}" == "error" || "${fpsFrac}" == "error" || -z "${res}" || -z "${fpsFrac}" ]] && { echo "❌ Failed to probe ${baseName}"; continue; }
+
+  fps="$(fraction_to_int "${fpsFrac}")"
+  [[ -z "${fps}" || "${fps}" == "0" ]] && fps="30"
+
+  width="${res%%x*}"; height="${res##*x}"
+  if [[ "${width}" =~ ^[0-9]+$ && "${height}" =~ ^[0-9]+$ ]] && (( height > width )); then
+    vfFilter="scale=-2:1080:flags=lanczos,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=${fps}"
+    echo "▮> Portrait → pad to 1920x1080"
+  elif [[ "${width}" =~ ^[0-9]+$ && "${height}" =~ ^[0-9]+$ ]] && (( width > height )); then
+    vfFilter="fps=${fps}"
+    echo "▭ Landscape"
+  else
+    vfFilter="fps=${fps}"
+    echo "▯ Unknown layout"
+  fi
+
+  check_disk_space "${inputReal}" "${outDir}" || { echo "❌ Not enough disk space."; continue; }
+
+  if ffmpeg -hide_banner -loglevel error -y \
+      -i "${inputReal}" \
+      -c:v prores_ks -profile:v 2 -pix_fmt yuv422p \
+      -vf "${vfFilter}" \
+      -vsync cfr -r "${fps}" \
+      -c:a pcm_s16le \
+      -movflags +faststart \
+      "${outputFile}"; then
+    echo "✅ ProRes success: ${filenameOnly}.mov"
+  else
+    echo "❌ Conversion failed: ${baseName}" >&2
+    rm -f -- "${outputFile}"
+  fi
+done
+
