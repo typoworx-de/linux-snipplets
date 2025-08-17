@@ -1,14 +1,57 @@
 #!/usr/bin/env bash
 trap 'echo; echo "[!] Interrupted by user. Exiting."; exit 130' INT
 
+debug=0
 searchPattern="*.mp4"
+
+# Video Profiles
+audioCodec="pcm16le"
+videoCodec="prores0"
+videoContainer="mov"
+
+prores0VideoProfile=(-c:v prores_ks -profile:v 0 -pix_fmt yuv422p10le -qscale:v 10)
+dnxhdVideoProfile=(-c:v dnxhd -b:v 36M -vf fps=30,format=yuv422p)
+h264VideoProfile=(-c:v libx264 -preset slow -crf 22 -pix_fmt yuv420p)
+h265VideoProfile=(-c:v libx264 -crf 23 -preset medium)
+
+pcm16leAudioProfile=(-c:a pcm_s24le -ar 48000)
+aacAudioProfile=(-c:a aac -b:a 192k -ar 48000)
 
 usage() { echo "Usage: $0 [-s searchPattern_or_dir_or_file]"; exit 1; }
 
-while getopts "s:h" opt; do
-  case ${opt} in
-    s) searchPattern="${OPTARG}" ;;
-    h|*) usage ;;
+# Parse with getopt
+PARSED=$(getopt -o s:dh --long source:,debug,help -- "$@")
+if [[ $? -ne 0 ]]; then
+  echo "❌ Argument parsing failed" >&2
+  exit 1
+fi
+
+# Set the parsed args back into positional parameters
+eval set -- "$PARSED"
+
+# Parse the options
+while true; do
+  case "$1" in
+    -s|--source)
+      searchPattern="$2"
+      shift 2
+      ;;
+    -d|--debug)
+      debug=1
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: $0 [-s|--source PATTERN] [-d|--debug] [-h|--help]"
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "❌ Unknown option: $1" >&2
+      exit 1
+      ;;
   esac
 done
 
@@ -111,7 +154,7 @@ for inputFile in "${files[@]}"; do
   [[ -z "${filenameOnly}" || "${filenameOnly}" == "${baseName}" ]] && filenameOnly="${baseName%.*}"
 
   # WRITE OUTPUT TO CURRENT DIR
-  outputFile="${outDir}/${filenameOnly}.mov"
+  outputFile="${outDir}/${filenameOnly}.${videoContainer}"
 
   # If output exists, compare durations
   if [[ -e "${outputFile}" ]]; then
@@ -125,7 +168,23 @@ for inputFile in "${files[@]}"; do
     fi
   fi
 
-  echo "⏳ Converting: ${baseName} → ${filenameOnly}.mov"
+  eval "videoProfileArgs=(\"\${${videoCodec}VideoProfile[@]}\")"
+  eval "audioProfileArgs=(\"\${${audioCodec}AudioProfile[@]}\")"
+  
+  if [[ -z "${videoProfileArgs[@]}" ]];
+  then
+    echo "Invalid VideoProfile-Args!"
+    exit 1
+  fi
+  
+  if [[ -z "${audioProfileArgs[@]}" ]];
+  then
+    echo "Invalid AudioProfile-Args!"
+    exit 1
+  fi
+
+  echo "⏳Converting: ${baseName} → ${filenameOnly}.${videoContainer}"
+  echo "  Codec-Formats: 🎞️ ${videoCodec}, 🔊${audioCodec}"
 
   # Probe resolution & fps
   res="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0:s=x -- "${inputReal}" || echo "error")"
@@ -148,16 +207,29 @@ for inputFile in "${files[@]}"; do
   fi
 
   check_disk_space "${inputReal}" "${outDir}" || { echo "❌ Not enough disk space."; continue; }
-
-  if ffmpeg -hide_banner -loglevel error -y \
+   
+   if [[ "$debug" = "1" ]];
+   then
+     echo "Debug: " ffmpeg -hide_banner -loglevel error -y \
       -i "${inputReal}" \
-      -c:v prores_ks -profile:v 2 -pix_fmt yuv422p \
+      "${videoProfileArgs[@]}" \
       -vf "${vfFilter}" \
-      -vsync cfr -r "${fps}" \
-      -c:a pcm_s16le \
-      -movflags +faststart \
-      "${outputFile}"; then
-    echo "✅ ProRes success: ${filenameOnly}.mov"
+      -r "${fps}" -vsync cfr \
+      "${audioProfileArgs[@]}" \
+      -movflags +faststart+use_metadata_tags \
+      "${outputFile}";
+   fi
+   
+   if ffmpeg -hide_banner -loglevel error -y \
+      -i "${inputReal}" \
+      "${videoProfileArgs[@]}" \
+      -vf "${vfFilter}" \
+      -r "${fps}" -vsync cfr \
+      "${audioProfileArgs[@]}" \
+      -movflags +faststart+use_metadata_tags \
+      "${outputFile}";
+  then
+    echo "✅ format ${videoFormat} success: ${filenameOnly}.${videoContainer}"
   else
     echo "❌ Conversion failed: ${baseName}" >&2
     rm -f -- "${outputFile}"
