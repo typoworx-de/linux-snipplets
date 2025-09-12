@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+banned_ips=()
+
+jails=$(
+  sudo fail2ban-client status \
+  | grep -E "Jail list:" \
+  | cut -d':' -f2- \
+  | tr ',' '\n' \
+  | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' \
+)
+
+for jail in $jails; do
+  echo "=============================="
+  echo "Status for jail: $jail"
+
+  status=$(sudo fail2ban-client status "$jail" 2>/dev/null)
+  if [[ $? -ne 0 ]]; then
+    echo "⚠️  Skipped non-existent jail: $jail"
+    continue
+  fi
+
+  # Print status
+  echo "$status"
+
+  # Extract banned IPs from this jail
+  ips=$(echo "$status" \
+    | grep -F "Banned IP list:" \
+    | cut -d':' -f2- \
+    | sed -e 's/^[ \t]*//' -e 's/[ \t]*$//' \
+  )
+
+  if [[ -n $ips ]]; then
+    for ip in $ips; do
+      banned_ips+=("$jail:$ip")
+    done
+  fi
+done
+
+
+echo
+echo "=============================="
+echo "Collected banned IPs (all jails):"
+if [[ ${#banned_ips[@]} -eq 0 ]]; then
+  echo "No banned IPs found."
+else
+  for entry in "${banned_ips[@]}"; do
+    echo "  $entry"
+  done
+fi
