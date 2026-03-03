@@ -16,6 +16,7 @@ declare -i STATE
 touch ~/.config/xinput-states;
 
 
+
 for DEVICE in $(xinput list | grep -Eio 'TouchPad\s*id\=[0-9]{1,2}');
 do
   ID=$(echo $DEVICE | grep -Eo '[0-9]{1,2}');
@@ -41,6 +42,7 @@ do
   fi
 
   echo
+  eho "$STATE $ID"
 
   if [ $STATE -eq 1 ];
   then
@@ -49,6 +51,7 @@ do
     xinput enable "$ID"
     xinput set-prop "$ID" "Device Enabled" 1
     gsettings set org.gnome.desktop.peripherals.touchpad send-events enabled
+    echo -n "${ID}" | sudo tee /sys/bus/hid/drivers/hid-multitouch/bind >/dev/null
   else
     echo "Touchpad disabled."
 
