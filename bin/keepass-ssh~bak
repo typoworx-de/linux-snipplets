@@ -1,0 +1,109 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use URI;
+use URI::Escape;
+use URI::QueryParam;
+use File::Which;
+use Term::ReadKey;
+
+#use LWP::UserAgent;
+#use JSON;
+
+#my $keepass_api_url = 'http://localhost:12546/api/';
+
+
+sub throw_error {
+    my ($message) = @_;
+    if (which('zenity')) {
+        $message =~ s/'/\\'/g;  # Escape single quotes
+        system("zenity", "--error", "--text=$message");
+    } else {
+        print "ERROR: $message\n";
+    }
+
+    # Wait for user to press Ctrl-C
+    print "Press Ctrl-C to exit...\n";
+    local $SIG{INT} = sub { exit; };
+    ReadMode('cbreak');
+    sleep;
+
+    exit 1;
+}
+
+sub url_decode {
+    my ($string) = @_;
+    $string =~ s/\+/%20/g;
+    return uri_unescape($string);
+}
+
+#sub query_keepass {
+#    my ($url, $protocolHandler, $host) = @_;
+#
+#    # Make an HTTP request to the KeePass HTTP API
+#    my $ua = LWP::UserAgent->new;
+#    my $response = $ua->get("$keepass_api_url?protocolHandler=$protocolHandler&host=$host");
+
+#    if ($response->is_success) {
+#        my $credentials = decode_json($response->decoded_content);
+
+        # Extract credentials from the response
+#        my $user = $credentials->{user} || '';
+#        my $password = $credentials->{password} || '';
+
+#        return ($user, $password);
+#    } else {
+#        throw_error("Error querying KeePass HTTP API: " . $response->status_line);
+#    }
+#}
+
+sub main {
+    # Check if sshpass is installed
+    if (!which('sshpass')) {
+        throw_error("Error: sshpass is not installed. Please install sshpass to run this script.");
+    }
+
+    my $url = shift @ARGV;
+    unless (defined $url) {
+        print("Usage: $0 <url>\n");
+        exit 1;
+    }
+
+    # fix :/// -> ://
+     $url =~ s{:///*}{://}g;
+
+    # Tidy-up URL with (out) In/Complete Credentials
+    $url = uri_unescape($url) if $url =~ /%[0-9A-Fa-f]{2}/;
+
+    my $uri_parts = URI->new($url);
+
+    # Extract components from URI
+    my $protocolHandler = $uri_parts->scheme || '';
+    my $auth = $uri_parts->userinfo || '';
+    my $user = $uri_parts->user || '';
+    my $password = $uri_parts->password || '';
+    my $host = $uri_parts->host || '';
+    my $port = $uri_parts->port || 22;  # Default port
+    my $path = $uri_parts->path || '';
+
+    # Query KeePass if $user and $password are empty
+#    if ($user eq '' && $password eq '') {
+#        ($user, $password) = query_keepass($url, $protocolHandler, $host);
+#    }
+
+    my $ssh_cmd = sprintf(
+       "/usr/bin/sshpass %s %s -o StrictHostKeyChecking=no -p %d %s",
+       length($password) > 0 ? "-p '$password'" : '-P',
+       $protocolHandler,
+       $port,
+       $user ? "$user\@$host" : $host
+    );
+
+    # Execute the command
+    print "Executing $ssh_cmd";
+    system($ssh_cmd) == 0 or throw_error("Error executing $ssh_cmd");
+}
+
+# Call the main function
+main();

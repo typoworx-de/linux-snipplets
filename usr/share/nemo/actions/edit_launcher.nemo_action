@@ -1,0 +1,8 @@
+[Nemo Action]
+Name=Edit .desktop launcher
+Comment=Edit existing .desktop launcher
+Exec=/usr/local/scratches/bin/create-desktop-icon %F
+Icon=accessories-text-editor
+Selection=extension:desktop
+Extensions=desktop;
+Quote=double

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+app="$1"
+shift
+
+if [[ ! -f "$app" ]];
+then
+  echo "Error: '$app' does not exist." >&2
+  exit 1
+fi
+
+chmod +x "$app"
+
+if [[ "$*" != *"--no-sandbox"* ]];
+then
+  exec "$app" --no-sandbox "$@"
+else
+  exec "$app" "$@"
+fi
+
+chmod -x "$app"

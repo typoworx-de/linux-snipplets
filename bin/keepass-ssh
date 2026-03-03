@@ -1,109 +1,164 @@
-#!/usr/bin/env perl
-
-use strict;
-use warnings;
-use URI;
-use URI::Escape;
-use URI::QueryParam;
-use File::Which;
-use Term::ReadKey;
-
-#use LWP::UserAgent;
-#use JSON;
-
-#my $keepass_api_url = 'http://localhost:12546/api/';
-
-
-sub throw_error {
-    my ($message) = @_;
-    if (which('zenity')) {
-        $message =~ s/'/\\'/g;  # Escape single quotes
-        system("zenity", "--error", "--text=$message");
-    } else {
-        print "ERROR: $message\n";
-    }
-
-    # Wait for user to press Ctrl-C
-    print "Press Ctrl-C to exit...\n";
-    local $SIG{INT} = sub { exit; };
-    ReadMode('cbreak');
-    sleep;
-
-    exit 1;
-}
-
-sub url_decode {
-    my ($string) = @_;
-    $string =~ s/\+/%20/g;
-    return uri_unescape($string);
-}
-
-#sub query_keepass {
-#    my ($url, $protocolHandler, $host) = @_;
+#!/usr/bin/env python3
+# Robust KeePass SSH URL handler for Ubuntu (works with gnome-terminal URL override)
 #
-#    # Make an HTTP request to the KeePass HTTP API
-#    my $ua = LWP::UserAgent->new;
-#    my $response = $ua->get("$keepass_api_url?protocolHandler=$protocolHandler&host=$host");
+# Usage (from KeePass URL override):
+#   cmd://gnome-terminal -- keepass-ssh "{URL}"
+#   or, like your template:
+#   cmd://gnome-terminal -- keepass-ssh 'ssh://{USERNAME}:{T-CONV:/{PASSWORD}/Uri/}@{BASE:RMVSCM}'
+#
+# Supported URL forms:
+#   ssh://user[:password]@host[:port][?identity=/path/to/key&jump=jumphost&strict=accept-new&agent=1&cmd=htop]
+#
+# Query params (all optional):
+#   identity  = path to private key (e.g. ~/.ssh/id_ed25519)
+#   jump      = ProxyJump / jumphost (same as proxyjump/ProxyJump)
+#   strict    = yes|no|accept-new (default: accept-new)
+#   agent     = 1 to enable agent forwarding (-A)
+#   knownhosts= custom known_hosts path
+#   cmd       = run remote command instead of interactive shell
+#
+# Environment knobs:
+#   KEEPASS_SSH_ERROR_PAUSE   seconds to keep terminal open on error without TTY (default: 8)
+#   KEEPASS_SSH_DEBUG         set to 1 to print verbose info before launching
+#
+import os, sys, shutil, shlex, subprocess, time
+from urllib.parse import urlparse, parse_qs
 
-#    if ($response->is_success) {
-#        my $credentials = decode_json($response->decoded_content);
+def pause_for_user(non_tty_seconds: int = 30):
+    """Keep the window visible so the user can read error text."""
+    # If interactive terminal, prompt for Enter
+    if sys.stdin.isatty():
+        try:
+            input("Press Enter to close...")
+        except EOFError:
+            pass
+        return
+    # Otherwise, short sleep to keep gnome-terminal visible
+    try:
+        time.sleep(non_tty_seconds)
+    except Exception:
+        pass
 
-        # Extract credentials from the response
-#        my $user = $credentials->{user} || '';
-#        my $password = $credentials->{password} || '';
+def die(msg, code=1):
+    zenity_bin = shutil.which("zenity")
+    if zenity_bin:
+        try:
+            subprocess.run([zenity_bin, "--error", "--title=KeePass SSH Error", f"--text={msg}"], timeout=5)
+        except Exception:
+            pass
 
-#        return ($user, $password);
-#    } else {
-#        throw_error("Error querying KeePass HTTP API: " . $response->status_line);
-#    }
-#}
+    sys.stderr.write(f"keepass-ssh: {msg}\n")
+    secs = int(os.environ.get("KEEPASS_SSH_ERROR_PAUSE", "30") or "30")
+    pause_for_user(secs)
+    sys.exit(code)
 
-sub main {
-    # Check if sshpass is installed
-    if (!which('sshpass')) {
-        throw_error("Error: sshpass is not installed. Please install sshpass to run this script.");
-    }
+def first(qs, key, default=None):
+    v = qs.get(key)
+    return v[0] if v else default
 
-    my $url = shift @ARGV;
-    unless (defined $url) {
-        print("Usage: $0 <url>\n");
-        exit 1;
-    }
+def booly(v, default=False):
+    if v is None:
+        return default
+    return str(v).lower() in {"1","true","yes","on"}
 
-    # fix :/// -> ://
-     $url =~ s{:///*}{://}g;
+def expand_path(p):
+    if not p:
+        return p
+    return os.path.expanduser(p)
 
-    # Tidy-up URL with (out) In/Complete Credentials
-    $url = uri_unescape($url) if $url =~ /%[0-9A-Fa-f]{2}/;
+def main():
+    if len(sys.argv) != 2:
+        die("Usage: keepass-ssh 'ssh://user:pass@host:22?identity=/key'", 2)
 
-    my $uri_parts = URI->new($url);
+    raw = sys.argv[1].strip()
+    # Strip surrounding single/double quotes that KeePass might inject
+    if (raw.startswith("'") and raw.endswith("'")) or (raw.startswith('"') and raw.endswith('"')):
+        raw = raw[1:-1]
 
-    # Extract components from URI
-    my $protocolHandler = $uri_parts->scheme || '';
-    my $auth = $uri_parts->userinfo || '';
-    my $user = $uri_parts->user || '';
-    my $password = $uri_parts->password || '';
-    my $host = $uri_parts->host || '';
-    my $port = $uri_parts->port || 22;  # Default port
-    my $path = $uri_parts->path || '';
+    if not raw.startswith("ssh://"):
+        die(f"Unsupported URL (must start with ssh://): {raw}")
 
-    # Query KeePass if $user and $password are empty
-#    if ($user eq '' && $password eq '') {
-#        ($user, $password) = query_keepass($url, $protocolHandler, $host);
-#    }
+    u = urlparse(raw)
+    host = u.hostname
+    if not host:
+        die("Missing host in URL")
 
-    my $ssh_cmd = sprintf(
-       "/usr/bin/sshpass %s %s -o StrictHostKeyChecking=no -p %d %s",
-       length($password) > 0 ? "-p '$password'" : '-P',
-       $protocolHandler,
-       $port,
-       $user ? "$user\@$host" : $host
-    );
+    user = u.username or ""
+    password = u.password or ""
+    port = str(u.port) if u.port else None
 
-    # Execute the command
-    print "Executing $ssh_cmd";
-    system($ssh_cmd) == 0 or throw_error("Error executing $ssh_cmd");
-}
+    qs = parse_qs(u.query, keep_blank_values=True)
+    identity = expand_path(first(qs, "identity"))  # path to private key
+    jump = first(qs, "jump") or first(qs, "proxyjump") or first(qs, "ProxyJump")
+    strict = (first(qs, "strict", "accept-new") or "accept-new").lower()
+    if strict not in {"yes","no","accept-new"}:
+        strict = "accept-new"
+    knownhosts = expand_path(first(qs, "knownhosts"))  # optional custom known_hosts file
+    agent = booly(first(qs, "agent"), default=False)
+    remote_cmd = first(qs, "cmd")  # optional remote command to run
 
-# Call the main function
-main();
+    ssh_bin = shutil.which("ssh")
+    if not ssh_bin:
+        die("Cannot find 'ssh' in PATH")
+
+    use_sshpass = bool(password)
+    sshpass_bin = shutil.which("sshpass") if use_sshpass else None
+    if use_sshpass and not sshpass_bin:
+        # Fall back gracefully to plain ssh; user will be prompted for password
+        use_sshpass = False
+
+    ssh_args = [ssh_bin]
+
+    # Host key policy
+    ssh_args += ["-o", f"StrictHostKeyChecking={strict}"]
+    # Avoid long password retry loops
+    ssh_args += ["-o", "NumberOfPasswordPrompts=1"]
+    # Keep long-lived sessions responsive
+    ssh_args += ["-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=3"]
+
+    if knownhosts:
+        ssh_args += ["-o", f"UserKnownHostsFile={knownhosts}"]
+
+    if identity:
+        ssh_args += ["-i", identity, "-o", "IdentitiesOnly=yes"]
+
+    if agent:
+        ssh_args.append("-A")
+
+    if jump:
+        ssh_args += ["-J", jump]
+
+    if port:
+        ssh_args += ["-p", port]
+
+    userhost = f"{user}@{host}" if user else host
+
+    # Build final argv, taking care not to expose the password
+    if use_sshpass:
+        argv = [sshpass_bin, "-p", password] + ssh_args + [userhost]
+    else:
+        argv = ssh_args + [userhost]
+
+    if remote_cmd:
+        argv.append(remote_cmd)
+
+    # Helpful, non-sensitive status line (hide password if present)
+    pretty = " ".join(shlex.quote(a) for a in argv)
+    if password:
+        pretty = pretty.replace(password, "****")
+
+    if os.environ.get("KEEPASS_SSH_DEBUG") == "1":
+        sys.stderr.write(f"Launching: {pretty}\n")
+
+    # Replace our process with ssh/sshpass so Ctrl+C works naturally
+    try:
+        os.execvp(argv[0], argv)
+    except FileNotFoundError:
+        die(f"Failed to exec: {argv[0]} (not found)", 127)
+    except PermissionError:
+        die(f"Failed to exec: {argv[0]} (permission denied)", 126)
+    except Exception as e:
+        die(f"Failed to exec: {argv[0]} ({e})", 1)
+
+if __name__ == "__main__":
+    main()

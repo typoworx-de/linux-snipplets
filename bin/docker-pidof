@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# docker-pidof - Get Docker container names by PID(s)
+# Usage: docker-pidof <pid1> [pid2] [pid3] ...
+
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <pid1> [pid2] [pid3] ..." >&2
+    echo "Example: $0 1234 5678" >&2
+    exit 1
+fi
+
+# Validate PIDs are numeric
+for pid in "$@"; do
+    if ! [[ "$pid" =~ ^[0-9]+$ ]]; then
+        echo "Error: '$pid' is not a valid PID (must be numeric)" >&2
+        exit 1
+    fi
+done
+
+# Get ALL containers (including stopped) with PID and name
+# Note: Stopped containers have PID=0
+containers=$(docker ps -a -q 2>/dev/null | xargs -r -I {} docker inspect --format '{{.State.Pid}} {{.Name}}' {} 2>/dev/null | sed 's|^0 |/|; s|/||' 2>/dev/null)
+
+if [ -z "$containers" ]; then
+    echo "No containers found (running or stopped)" >&2
+    exit 1
+fi
+
+found_any=false
+
+for target_pid in "$@"; do
+    # Search for exact PID match
+    match=$(echo "$containers" | grep "^$target_pid " 2>/dev/null || true)
+    
+    if [ -n "$match" ]; then
+        container_name=$(echo "$match" | awk '{print $2}')
+        echo "$target_pid: $container_name"
+        found_any=true
+    else
+        # Check if PID exists on host but isn't a Docker container
+        if kill -0 "$target_pid" 2>/dev/null; then
+            echo "$target_pid: exists on host but not a Docker container" >&2
+        else
+            echo "$target_pid: not found (not running or invalid PID)" >&2
+        fi
+    fi
+done
+
+if [ "$found_any" = false ]; then
+    exit 1
+fi

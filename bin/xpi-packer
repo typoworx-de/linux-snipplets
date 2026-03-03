@@ -1,0 +1,53 @@
+#!/bin/bash
+set -e
+
+usage()
+ {
+  echo "Usage:"
+  echo "  $0 -x file1.xpi [file2.xpi ...]     # Extract .xpi files"
+  echo "  $0 -c folder1 [folder2 ...]         # Create .xpi from folders"
+  exit 1
+}
+
+if [[ $# -lt 2 ]];
+then
+  usage
+fi
+
+mode="$1"
+shift
+
+case "$mode" in
+  -x)
+    for xpi in "$@"; do
+      [ -f "$xpi" ] || { echo "❌ File not found: $xpi"; continue; }
+      folder="${xpi%.xpi}.xpi.src"
+      mkdir -p "$folder"
+      echo "📦 Extracting $xpi → $folder/"
+      unzip -q "$xpi" -d "$folder"
+    done
+    ;;
+  -c)
+    folders=("$@")
+    [ ${#folders[@]} -eq 0 ] && folders=(".")
+
+    for folder in "${folders[@]}"; do
+      folder="${folder%/}"
+      [ -d "$folder" ] || { echo "❌ Folder not found: $folder"; continue; }
+
+      if [ ! -f "$folder/manifest.json" ]; then
+        echo "⚠️  Skipping $folder: no manifest.json"
+        continue
+      fi
+
+      base="$(basename "$(cd "$folder" && pwd)")"
+      outfile="${base%.src}.patched.xpi"
+
+      echo "🧩 Creating $outfile from $folder/"
+      (cd "$folder" && zip -qrX "../$outfile" . -x '*~' '*.org' '*.patch')
+    done
+    ;;
+  *)
+    usage
+    ;;
+esac

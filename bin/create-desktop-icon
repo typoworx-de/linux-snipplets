@@ -1,0 +1,62 @@
+#!/bin/bash
+
+FILE="$1"
+FOLDER="${FILE:-$HOME/Desktop}"
+
+# Determine mode: edit if file exists, otherwise create new
+if [[ -f "$FILE" ]]; then
+  if [[ "$FILE" != *.desktop ]]; then
+    echo "Error: Desktop file must have a .desktop extension."
+    exit 1
+  fi
+
+  # EDIT MODE
+  NAME=$(grep -E '^Name=' "$FILE" | cut -d= -f2-)
+  EXEC=$(grep -E '^Exec=' "$FILE" | cut -d= -f2-)
+  ICON=$(grep -E '^Icon=' "$FILE" | cut -d= -f2-)
+  TERM=$(grep -E '^Terminal=' "$FILE" | cut -d= -f2-)
+  TITLE="Edit Launcher"
+else
+  if [[ "$FILE" != *.desktop ]]; then
+    FILE="$FILE.desktop"
+  fi
+
+  # CREATE MODE
+  NAME=""
+  EXEC=""
+  ICON=""
+  TERM="FALSE"
+  TITLE="Create New Launcher"
+
+  # If target is a folder, ask for new filename
+  if [[ -d "$FOLDER" ]]; then
+    NAME=$(yad --entry --title="Launcher Name" --text="Enter launcher name:")
+    [[ -z "$NAME" ]] && exit 1
+    FILE="${FOLDER}/${NAME// /_}.desktop"
+  fi
+fi
+
+# Show form
+VALUES=$(yad --form --title="$TITLE" \
+  --field="App Name" "$NAME" \
+  --field="Command" "$EXEC" \
+  --field="Icon:FL" "$ICON" \
+  --field="Run in terminal:CHK" "$TERM")
+
+[ $? -ne 0 ] && exit 1
+
+# Parse result
+NEW_NAME=$(echo "$VALUES" | cut -d'|' -f1)
+NEW_EXEC=$(echo "$VALUES" | cut -d'|' -f2)
+NEW_ICON=$(echo "$VALUES" | cut -d'|' -f3)
+NEW_TERM=$(echo "$VALUES" | cut -d'|' -f4)
+
+# Write launcher file
+cat > "$FILE" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$NEW_NAME
+Exec=$NEW_EXEC
+Icon=$NEW_ICON
+Terminal=$NEW_TERM
+EOF

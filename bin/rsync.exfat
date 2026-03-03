@@ -1,0 +1,9 @@
+#!/bin/sh
+
+rsync \
+  -rltD \
+  --stats \
+  --modify-window=1 --info=progress2 \
+  --no-perms --no-owner --no-group \
+  --no-links --copy-links --mkpath --inplace \
+  "$@"

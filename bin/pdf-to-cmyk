@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+print_help()
+{
+    cat <<'EOF'
+Usage:
+  pdf-to-cmyk.sh <input.pdf> [output.pdf]
+
+Description:
+  Converts a PDF to true DeviceCMYK using Ghostscript.
+  If no output filename is given, "_cmyk.pdf" is appended automatically.
+
+Examples:
+  pdf-to-cmyk.sh input.pdf
+  → input_cmyk.pdf
+
+  pdf-to-cmyk.sh input.pdf output.pdf
+  → output.pdf
+
+Options:
+  -h, --help    Show this help
+EOF
+}
+
+# ---- argument handling ------------------------------------------------------
+
+if [ "${#}" -eq 0 ]
+then
+    print_help
+    exit 1
+fi
+
+if [ "${1}" = "-h" ] || [ "${1}" = "--help" ]
+then
+    print_help
+    exit 0
+fi
+
+INPUT_FILE="${1}"
+
+if [ ! -f "${INPUT_FILE}" ]
+then
+    echo "Error: Input file does not exist: ${INPUT_FILE}" >&2
+    exit 1
+fi
+
+if [ "${#}" -ge 2 ]
+then
+    OUTPUT_FILE="${2}"
+else
+    OUTPUT_FILE="${INPUT_FILE%.pdf}_cmyk.pdf"
+fi
+
+# ---- conversion -------------------------------------------------------------
+
+gs -dSAFER -dBATCH -dNOPAUSE \
+   -sDEVICE=pdfwrite \
+   -sOutputFile="${OUTPUT_FILE}" \
+   -sProcessColorModel=DeviceCMYK \
+   -sColorConversionStrategy=CMYK \
+   -sColorConversionStrategyForImages=CMYK \
+   "${INPUT_FILE}"
+
+echo "CMYK PDF written to: ${OUTPUT_FILE}"

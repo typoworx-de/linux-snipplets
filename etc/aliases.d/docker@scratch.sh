@@ -1,3 +1,6 @@
+export DOCKER_BUILDKIT=1
+export BUILDKIT_PROGRESS=plain
+
 alias docker-timed="time docker"
 alias docker-run="docker run --rm -it"
 alias docker-build="docker-timed buildx build --progress=plain --cache-to=type=inline --always-recreate-deps --build-arg BUILD_TIME=$(date +%s)"

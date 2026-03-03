@@ -1,0 +1,8 @@
+[Nemo Action]
+Name=Create .desktop launcher
+Comment=Create .desktop launcher using GUI
+Exec=/usr/local/scratches/bin/create-desktop-icon %F
+Icon=application-x-desktop
+Selection=any
+Quote=double
+Extensions=dir;file;

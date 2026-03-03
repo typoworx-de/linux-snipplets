@@ -19,6 +19,7 @@ function xcat()
   elif [[ "${fInfo}" == *"bzip2"* ]];
   then
     method='bzcat';
+    args='-c';
 #    methodInfo='bzip2';
   elif [[ "${fInfo}" == *"zip"* ]];
   then

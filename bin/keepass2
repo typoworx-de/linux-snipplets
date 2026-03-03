@@ -1,6 +1,25 @@
 #!/bin/bash
-keepass2_bin=$(which -a keepass2 | tail -n1)
+#keepass2_bin=$(which -a keepass2 | tail -n1)
+keepass2_bin='/usr/lib/keepass2/KeePass.exe'
+#keepass2_logfile="${HOME}/.local/share/keepass.log"
+keepass2_logfile=/dev/null
 
-exec ${keepass2_bin} "$@" || exec $0 "$@"
+# Build launch command: prefer mono, fall back to /usr/bin/cli
+if command -v mono >/dev/null 2>&1;
+then
+  echo "Starting using mono"
+  cmd=(mono "${keepass2_bin}" "$@")
+elif command -v /usr/bin/cli >/dev/null 2>&1;
+then
+  echo "Starting using cli"
+  cmd=("/usr/bin/cli" "${keepass2_bin}" "$@")
+else
+  echo "Error: neither 'mono' nor '/usr/bin/cli' found in PATH." >&2
+  exit 127
+fi
 
-exit $?
+# Fire and forget: new session, no TTY, immune to HUP; all I/O to /dev/null
+env LC_MESSAGES=de_DE.UTF-8 XMODIFIERS='@im=none' GDK_BACKEND=x11 \
+  setsid nohup "${cmd[@]}" >"${keepass2_logfile}" 2>&1 </dev/null &
+
+exit ${?:-0}
