@@ -1,63 +1,227 @@
 #!/bin/bash
-#set -ex;
+set -euo pipefail
 
-DISPLAY=${DISPLAY:-\:0}
-XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$UID}/
-DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$UID/bus}
+ACTION="${1:-toggle}"
 
-declare -i ID
-declare -i STATE
+HID_DRIVER="hid-multitouch"
+DRV="/sys/bus/hid/drivers/${HID_DRIVER}"
 
-#
-# Search all TouchPad devices if there are more than one
-# Attention may be some kind of exclude-list may be required (is on my ToDo)
-#
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+CACHE_FILE="${CACHE_DIR}/touchpad-hid-devs.${HID_DRIVER}"
 
-touch ~/.config/xinput-states;
+mkdir -p "${CACHE_DIR}"
 
+die() { echo "ERROR: $*" >&2; exit 1; }
 
+need_paths() {
+  [[ -d "${DRV}" ]] || die "Driver path not found: ${DRV}"
+  [[ -w "${DRV}/bind" || -w "${DRV}/unbind" ]] || true
+}
 
-for DEVICE in $(xinput list | grep -Eio 'TouchPad\s*id\=[0-9]{1,2}');
-do
-  ID=$(echo $DEVICE | grep -Eo '[0-9]{1,2}');
+# ---------- Touchpad discovery / cache ----------
 
-  if [[ -z "$ID" || "$ID" == 0 ]];
-  then
-    continue;
+# Find HID device IDs that currently expose an input device named "*Touchpad*"
+# Only works while bound.
+find_touchpad_hid_devs_when_bound() {
+  local found=0
+  for d in /sys/bus/hid/devices/*; do
+    [[ -r "${d}/uevent" ]] || continue
+
+    # Only devices currently bound to hid-multitouch
+    [[ -e "${d}/driver" ]] || continue
+    local cur_driver
+    cur_driver="$(basename "$(readlink -f "${d}/driver")")"
+    [[ "${cur_driver}" == "${HID_DRIVER}" ]] || continue
+
+    # Touchpad identification by input name (exists only while bound)
+    if grep -qi "touchpad" "${d}"/input/input*/name 2>/dev/null; then
+      basename "${d}"
+      found=1
+    fi
+  done
+
+  [[ "${found}" -eq 1 ]]
+}
+
+load_cached_devs() {
+  [[ -r "${CACHE_FILE}" ]] || return 1
+  # Keep only those that still exist in sysfs
+  awk 'NF{print $0}' "${CACHE_FILE}" | while read -r dev; do
+    [[ -d "/sys/bus/hid/devices/${dev}" ]] && echo "${dev}"
+  done
+}
+
+save_cache() {
+  local devs=("$@")
+  : > "${CACHE_FILE}"
+  for dev in "${devs[@]}"; do
+    echo "${dev}" >> "${CACHE_FILE}"
+  done
+}
+
+ensure_devs() {
+  # Prefer cache (works even when unbound)
+  mapfile -t devs < <(load_cached_devs || true)
+  if [[ "${#devs[@]}" -gt 0 ]]; then
+    printf '%s\n' "${devs[@]}"
+    return 0
   fi
 
+  # First-run: must be bound at least once to discover
+  mapfile -t devs < <(find_touchpad_hid_devs_when_bound || true)
+  if [[ "${#devs[@]}" -eq 0 ]]; then
+    die "No touchpad HID device found. Temporarily enable/bind the touchpad once, then run: $(basename "$0") refresh-cache"
+  fi
 
-  if [[ "${#@}" > 0 ]];
-  then
-    case "${1/--/}" in
-      enable|enabled|on):
-	STATE=1;;
-      disable|disabled|off):
-	STATE=0;;
-      help):
-	echo "Syntax: $(basename $0) [toggle with no param or enable|ob or disable|off]";
-    esac
+  save_cache "${devs[@]}"
+  printf '%s\n' "${devs[@]}"
+}
+
+refresh_cache() {
+  mapfile -t devs < <(find_touchpad_hid_devs_when_bound || true)
+  if [[ "${#devs[@]}" -eq 0 ]]; then
+    die "Can't refresh cache because touchpad is currently not bound/visible. Enable it once, then rerun refresh-cache."
+  fi
+  save_cache "${devs[@]}"
+  echo "Cache refreshed (${#devs[@]} device(s)):"
+  printf '  %s\n' "${devs[@]}"
+}
+
+# ---------- Bind / unbind ----------
+
+is_bound() {
+  local dev="${1}"
+  [[ -e "/sys/bus/hid/devices/${dev}/driver" ]] || return 1
+  [[ "$(basename "$(readlink -f "/sys/bus/hid/devices/${dev}/driver")")" == "${HID_DRIVER}" ]]
+}
+
+do_bind() {
+  local dev="${1}"
+  echo "Enabling (bind) ${dev} ..."
+  echo -n "${dev}" | sudo tee "${DRV}/bind" >/dev/null
+}
+
+do_unbind() {
+  local dev="${1}"
+  echo "Disabling (unbind) ${dev} ..."
+  echo -n "${dev}" | sudo tee "${DRV}/unbind" >/dev/null || true
+}
+
+# ---------- Generic external mouse detection (no xinput) ----------
+
+# Returns 0 if an external mouse is present, else 1.
+# Uses udev classification: ID_INPUT_MOUSE=1 and NOT ID_INPUT_TOUCHPAD=1
+external_mouse_present() {
+  # Any "by-id" mouse device except touchpads
+  shopt -s nullglob
+  local dev
+  for dev in /dev/input/by-id/*-mouse /dev/input/by-id/*-event-mouse; do
+    # Exclude touchpad-ish names just in case
+    if echo "$dev" | grep -qiE 'touchpad|trackpad'; then
+      continue
+    fi
+    return 0
+  done
+  return 1
+}
+
+# ---------- Commands ----------
+
+cmd_status() {
+  mapfile -t devs < <(ensure_devs)
+  for dev in "${devs[@]}"; do
+    if is_bound "${dev}"; then
+      echo "Touchpad: enabled (bound to ${HID_DRIVER}) [${dev}]"
+    else
+      echo "Touchpad: disabled (unbound) [${dev}]"
+    fi
+  done
+
+  if external_mouse_present; then
+    echo "External mouse: present (detected via ID_INPUT_MOUSE=1)"
   else
-    STATE=$(xinput list-props "$ID" | grep 'Device Enabled' | awk '{print $4}');
+    echo "External mouse: not detected"
   fi
 
-  echo
-  eho "$STATE $ID"
+  echo "Cache: ${CACHE_FILE}"
+}
 
-  if [ $STATE -eq 1 ];
-  then
-    echo "Touchpad enabled."
+cmd_enable() {
+  mapfile -t devs < <(ensure_devs)
+  for dev in "${devs[@]}"; do
+    if is_bound "${dev}"; then
+      echo "${dev}: already enabled"
+    else
+      do_bind "${dev}"
+    fi
+  done
+}
 
-    xinput enable "$ID"
-    xinput set-prop "$ID" "Device Enabled" 1
-    gsettings set org.gnome.desktop.peripherals.touchpad send-events enabled
-    echo -n "${ID}" | sudo tee /sys/bus/hid/drivers/hid-multitouch/bind >/dev/null
+cmd_disable() {
+  mapfile -t devs < <(ensure_devs)
+  for dev in "${devs[@]}"; do
+    if is_bound "${dev}"; then
+      do_unbind "${dev}"
+    else
+      echo "${dev}: already disabled"
+    fi
+  done
+}
+
+cmd_toggle() {
+  mapfile -t devs < <(ensure_devs)
+  any_bound=0
+  for dev in "${devs[@]}"; do
+    if is_bound "${dev}"; then any_bound=1; break; fi
+  done
+
+  if [[ "${any_bound}" -eq 1 ]]; then
+    for dev in "${devs[@]}"; do
+      is_bound "${dev}" && do_unbind "${dev}"
+    done
   else
-    echo "Touchpad disabled."
-
-    xinput disable "$ID"
-    xinput set-prop "$ID" "Device Enabled" 0
-    gsettings set org.gnome.desktop.peripherals.touchpad send-events disabled
+    for dev in "${devs[@]}"; do
+      do_bind "${dev}"
+    done
   fi
-done
+}
 
+cmd_auto() {
+  mapfile -t devs < <(ensure_devs)
+
+  if external_mouse_present; then
+    echo "Auto: external mouse present -> disabling touchpad"
+    for dev in "${devs[@]}"; do
+      is_bound "${dev}" && do_unbind "${dev}" || echo "${dev}: already disabled"
+    done
+  else
+    echo "Auto: no external mouse -> enabling touchpad"
+    for dev in "${devs[@]}"; do
+      is_bound "${dev}" && echo "${dev}: already enabled" || do_bind "${dev}"
+    done
+  fi
+}
+
+need_paths
+
+case "${ACTION}" in
+  on|enable|enabled)   cmd_enable ;;
+  off|disable|disabled) cmd_disable ;;
+  toggle)              cmd_toggle ;;
+  auto)                cmd_auto ;;
+  status)              cmd_status ;;
+  refresh-cache)       refresh_cache ;;
+  help|-h|--help)
+    cat <<EOF
+Usage: $(basename "$0") [toggle|on|off|auto|status|refresh-cache]
+
+Notes:
+- 'auto' uses udev input classification (ID_INPUT_MOUSE=1, excludes ID_INPUT_TOUCHPAD=1).
+- On first run, touchpad must be bound once so the script can discover and cache its HID device ID(s).
+- Cache file: ${CACHE_FILE}
+EOF
+    ;;
+  *)
+    die "Unknown action: ${ACTION} (use --help)"
+    ;;
+esac
