@@ -1,43 +1,75 @@
 #!/bin/bash
 
-declare profileDir="$HOME/.config/google-chrome";
+profileDir="${HOME}/.config/google-chrome"
 
-[[ -d "${profileDir}" ]] || {
-  echo "No Google-Chrome profile found in ${profileDir}!";
-  exit 1;
-}
-
-[ -x $(which profile-cleaner) ] || {
-  echo "Profile-Cleaner Tool not installed/found!";
-  exit 1;
-}
+if [[ ! -d "${profileDir}" ]]
+then
+    echo "Chrome profile directory not found: ${profileDir}"
+    exit 1
+fi
 
 echo
 echo "Quitting all running google-chrome processes ..."
-killall $(which google-chrome) --wait
-killall /opt/google/chrome/chrome --wait
+pkill -x google-chrome 2>/dev/null || true
+pkill -f /opt/google/chrome/chrome 2>/dev/null || true
+sleep 2
 
-#Profile~Backups
-find "${profileDir}" \( -name "*Profile*" -o -name "Default" \) -type d -prune ! -name 'Profile~Backups' -print0 | while IFS= read -r -d '' path;
+profile-cleaner gc
+
+find "${profileDir}" \( -name "Default" -o -name "Profile *" \) -type d -prune ! -name 'Profile~Backups' -print0 |
+while IFS= read -r -d '' path
 do
-   prefsFile=${path}/Preferences;
+    prefsFile="${path}/Preferences"
 
-   if [[ ! -f "$prefsFile" ]];
-   then
-        echo "Missing preferences file (${path})";
-        continue;
-   fi
+    if [[ ! -f "${prefsFile}" ]]
+    then
+        echo "Missing preferences file (${path})"
+        continue
+    fi
 
-   echo "-----------------------------------------------------------";
-   echo "Profile: ${path}";
-   echo "-----------------------------------------------------------";
-   echo
-   echo "Checking for left dead lock-files."
-   find "${path}" -type f -name 'SingletonLock' -delete
+    echo "-----------------------------------------------------------"
+    echo "Profile: ${path}"
+    echo "-----------------------------------------------------------"
+    echo
 
-   echo "Running profile-cleaner ..."
-   profile-cleaner gc -p "${path}"
+    echo "Removing stale singleton files ..."
+    find "${path}" -maxdepth 1 -type f \
+      \( -name 'SingletonLock' -o -name 'SingletonCookie' -o -name 'SingletonSocket' \) \
+      -delete
+
+    echo "Removing volatile caches ..."
+    rm -rf "${path}/GPUCache"
+    rm -rf "${path}/Code Cache"
+    rm -rf "${path}/GrShaderCache"
+    rm -rf "${path}/Service Worker/CacheStorage"
+    rm -rf "${path}/Service Worker/ScriptCache"
+
+    for db in \
+        "${path}/History" \
+        "${path}/Cookies" \
+        "${path}/Web Data" \
+        "${path}/Favicons" \
+        "${path}/Login Data"
+    do
+        if [[ -f "${db}" ]]
+        then
+            echo "Checking SQLite DB: ${db}"
+            sqlite3 "${db}" "PRAGMA quick_check;" || echo "SQLite check failed: ${db}"
+
+            echo "Optimizing SQLite DB: ${db}"
+            sqlite3 "${db}" "REINDEX;" || true
+            sqlite3 "${db}" "VACUUM;" || true
+        fi
+    done
+
+    echo "Running profile-cleaner ..."
+    profile-cleaner gc -p "${path}"
 done
+
+echo
+echo "Removing global Chrome caches ..."
+rm -rf "${profileDir}/ShaderCache"
+rm -rf "${HOME}/.cache/google-chrome"
 
 echo
 echo "Done."

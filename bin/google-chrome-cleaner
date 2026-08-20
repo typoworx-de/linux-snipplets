@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+chromeDir="${HOME}/.config/google-chrome"
+cacheRoot="${HOME}/.cache/google-chrome"
+
+if [ ! -d "${chromeDir}" ]
+then
+  echo "Missing Chrome config directory: ${chromeDir}" >&2
+  exit 1
+fi
+
+mapfile -t chromeLines < <(
+  ps -eo pid=,args= \
+  | grep -E '(^|/)(google-chrome|google-chrome-stable)( |$)|/opt/google/chrome/chrome( |$)' \
+  | grep -v -F -- "$0" \
+  | grep -v -E 'grep[[:space:]]'
+)
+
+echo
+echo "=== Chrome Cleanup ==="
+echo "Chrome dir: ${chromeDir}"
+echo
+
+if [ "${#chromeLines[@]}" -gt 0 ]
+then
+  echo "Chrome appears to be running:"
+  printf '%s\n' "${chromeLines[@]}"
+  echo
+  read -r -p "Continue anyway? (y/N): " confirm
+
+  if [[ ! "${confirm:-N}" =~ ^[Yy]$ ]]
+  then
+    echo "Abort."
+    exit 1
+  fi
+fi
+
+dirNames=(
+  "Cache"
+  "Code Cache"
+  "GPUCache"
+  "ShaderCache"
+  "GrShaderCache"
+)
+
+foundDirs=()
+
+while IFS= read -r -d '' dir
+do
+  foundDirs+=("${dir}")
+done < <(
+  find "${chromeDir}" -type d \( \
+    -name "Cache" -o \
+    -name "Code Cache" -o \
+    -name "GPUCache" -o \
+    -name "ShaderCache" -o \
+    -name "GrShaderCache" \
+  \) -print0
+)
+
+echo "Found cache directories:"
+if [ "${#foundDirs[@]}" -eq 0 ]
+then
+  echo "  none"
+else
+  printf '  %s\n' "${foundDirs[@]}"
+fi
+
+echo
+if [ -d "${cacheRoot}" ]
+then
+  echo "Found global cache:"
+  echo "  ${cacheRoot}"
+else
+  echo "Found global cache:"
+  echo "  none"
+fi
+
+echo
+read -r -p "Delete listed paths? (y/N): " confirmDelete
+
+if [[ ! "${confirmDelete:-N}" =~ ^[Yy]$ ]]
+then
+  echo "Abort."
+  exit 0
+fi
+
+echo
+echo "Deleting cache directories..."
+if [ "${#foundDirs[@]}" -eq 0 ]
+then
+  echo "  nothing to delete"
+else
+  for dir in "${foundDirs[@]}"
+  do
+    echo "  deleting: ${dir}"
+    rm -rf -- "${dir}"
+  done
+fi
+
+echo
+echo "Deleting global cache..."
+if [ -d "${cacheRoot}" ]
+then
+  echo "  deleting: ${cacheRoot}"
+  rm -rf -- "${cacheRoot}"
+else
+  echo "  nothing to delete"
+fi
+
+echo
+echo "Done."

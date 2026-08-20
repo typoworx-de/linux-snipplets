@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+connectionName="TYPOworx Office"
+remoteBuilder="x3400-build"
+
+if nmcli -t -f NAME connection show --active \
+  | grep -Fxq "${connectionName}"
+then
+  export BUILDX_BUILDER="${remoteBuilder}"
+else
+  unset BUILDX_BUILDER
+fi
+
+echo "Docker buildx context: ${BUILDX_BUILDER:-<unset>}"

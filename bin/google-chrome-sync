@@ -26,13 +26,14 @@ declare -i force=0
 declare -i clean=0
 declare -i verbose=0
 declare -i optimize=0
+declare -i backup=1
 declare taskId=$(date '+%d%m%Y-%H%M%S')
 declare userDir=~;
 declare browserName='na'
 declare sourceBrowser=''
 declare targetBrowser=''
 
-getopts=`getopt -o t:s:u:dfhcov --long source:,target:,user:,force,dry-run,clean,optimize,verbose,help -n "$0" -- "$@"`
+getopts=`getopt -o t:s:u:dfhcov --long source:,target:,user:,force,dry-run,clean,optimize,no-backup,verbose,help -n "$0" -- "$@"`
 
 eval set -- "$getopts"
 while true ; do
@@ -56,6 +57,9 @@ while true ; do
                 shift 1;;
         -c|--clean)
                 clean=1;
+                shift 1;;
+        --no-backup)
+                backup=0;
                 shift 1;;
         -o|--optimize)
                 force=1;
@@ -202,13 +206,47 @@ fi
     "${args[@]}" \
     "${sourceProfileRoot}/" "${targetProfileRoot}/" \
   && {
-    if [ "${optimize}" -eq 1 ];
-    then
-      mv "${sourceProfileRoot}" "${sourceProfileRoot}~backup-$(date '+%d%m%Y-%H%M%S')" \
-      && mv "${targetProfileRoot}" "${sourceProfileRoot}" \
-      && echo "Backed up profile to: ${sourceProfileRoot}~backup-$(date '+%d%m%Y-%H%M%S')";
-      echo done
-    fi
+     if [ "${optimize}" -eq 1 ];
+     then
+       timestamp="$(date '+%d%m%Y-%H%M%S')"
+       backupFile="${sourceProfileRoot}~backup-${timestamp}.tar.gz"
+
+       if [ "${backup}" -eq 1 ];
+       then
+         echo "Creating backup: ${backupFile}"
+
+         tar -czf "${backupFile}" -C "$(dirname "${sourceProfileRoot}")" "$(basename "${sourceProfileRoot}")"
+         tar_status=$?
+
+         if [ ${tar_status} -ne 0 ];
+         then
+           echo "ERROR: tar backup failed (exit code ${tar_status})" >&2
+           exit 1
+         fi
+
+         echo "Backup created successfully"
+       fi
+
+       mv "${sourceProfileRoot}" "${sourceProfileRoot}-${timestamp}"
+       mv_status=$?
+       if [ ${mv_status} -ne 0 ];
+       then
+         echo "ERROR: could not move original profile to ${oldProfileRoot}" >&2
+         exit 1
+       fi
+
+       mv "${targetProfileRoot}" "${sourceProfileRoot}"
+       mv_status=$?
+
+       if [ ${mv_status} -ne 0 ];
+       then
+         echo "ERROR: move failed after backup!" >&2
+         exit 1
+       fi
+
+       echo "Profile optimized successfully"
+     fi
+
   } || {
     echo "[error: rsync -av" \
       "${args[@]}" \

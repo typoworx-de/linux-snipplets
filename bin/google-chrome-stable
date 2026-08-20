@@ -1,0 +1,5 @@
+#!/bin/bash
+
+exec /usr/bin/google-chrome-stable \
+  $(grep -v '^\s*#' ~/.config/chrome-flags.conf 2>/dev/null | xargs) \
+  "$@"

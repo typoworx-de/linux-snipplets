@@ -1,0 +1,258 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+readonly PROGRAM_NAME="${0##*/}"
+readonly AI_PATTERN='(c2pa|jumbf|content[[:space:]_-]*credentials?|trainedalgorithmicmedia|digital[[:space:]_-]*source[[:space:]_-]*type|generative[[:space:]_-]*ai|ai[[:space:]_-]*generated|synthetic[[:space:]_-]*media|deepfake|openai|dall[- ]?e|midjourney|stable[[:space:]_-]*diffusion|automatic1111|comfyui|adobe[[:space:]_-]*firefly)'
+
+temporaryFile=''
+metadataFile=''
+stringFile=''
+isRecursive=false
+
+showUsage()
+{
+  cat <<USAGE
+Usage:
+  ${PROGRAM_NAME} INPUT_FILE [OUTPUT_FILE]
+  ${PROGRAM_NAME} [--recursive] INPUT_DIRECTORY
+
+Remove embedded metadata with ImageMagick and inspect each result for textual
+AI-provenance indicators.
+
+Directory mode edits supported images in place. Relative paths such as .,
+./images and ../export are supported. Without --recursive, only images directly
+inside the directory are processed.
+
+Supported extensions: jpg, jpeg, png, webp, tif, tiff, avif and heic.
+
+Exit codes:
+  0  All files converted; no recognized metadata indicators remain
+  1  At least one file failed
+  2  All files converted, but at least one requires forensic review
+
+This does not detect pixel-based watermarks and cannot prove whether an image
+is AI-generated, authentic, or a deepfake.
+USAGE
+}
+
+cleanup()
+{
+  local cleanupFile
+
+  for cleanupFile in "${temporaryFile}" "${metadataFile}" "${stringFile}"
+  do
+    if [[ -n "${cleanupFile}" && -e "${cleanupFile}" ]]
+    then
+      rm -f -- "${cleanupFile}"
+    fi
+  done
+}
+
+requireCommand()
+{
+  local commandName="${1}"
+
+  if ! command -v "${commandName}" >/dev/null 2>&1
+  then
+    printf 'Error: required command not found: %s\n' "${commandName}" >&2
+    exit 127
+  fi
+}
+
+processFile()
+{
+  local inputFile="${1}"
+  local outputFile="${2}"
+  local outputDirectory
+  local outputBasename
+  local outputExtension
+  local -a evidence=()
+
+  outputDirectory="$(dirname -- "${outputFile}")"
+  outputBasename="$(basename -- "${outputFile}")"
+  outputExtension="${outputBasename##*.}"
+
+  if [[ "${outputBasename}" == "${outputExtension}" ]]
+  then
+    printf '[ERROR] %s: output filename has no image extension\n' "${inputFile}" >&2
+    return 1
+  fi
+
+  temporaryFile="$(mktemp --tmpdir="${outputDirectory}" ".${outputBasename}.XXXXXX.${outputExtension}")"
+  metadataFile="$(mktemp "${TMPDIR:-/tmp}/${PROGRAM_NAME}.metadata.XXXXXX")"
+  stringFile="$(mktemp "${TMPDIR:-/tmp}/${PROGRAM_NAME}.strings.XXXXXX")"
+
+  if ! convert "${inputFile}" -auto-orient -strip "${temporaryFile}"
+  then
+    printf '[ERROR] %s: ImageMagick conversion failed\n' "${inputFile}" >&2
+    cleanup
+    return 1
+  fi
+
+  if ! exiftool -a -u -g1 -s -- "${temporaryFile}" > "${metadataFile}"
+  then
+    printf '[ERROR] %s: ExifTool inspection failed\n' "${inputFile}" >&2
+    cleanup
+    return 1
+  fi
+
+  if ! strings -a -- "${temporaryFile}" > "${stringFile}"
+  then
+    printf '[ERROR] %s: strings inspection failed\n' "${inputFile}" >&2
+    cleanup
+    return 1
+  fi
+
+  mapfile -t evidence < <(
+    grep -Eih "${AI_PATTERN}" "${metadataFile}" "${stringFile}" \
+      | sed -E "s#^${metadataFile}:#metadata: #; s#^${stringFile}:#strings: #" \
+      | sort -u \
+      | head -n 20 \
+      || true
+  )
+
+  if [[ -e "${outputFile}" ]]
+  then
+    chmod --reference="${outputFile}" "${temporaryFile}"
+  fi
+
+  if ! mv -f -- "${temporaryFile}" "${outputFile}"
+  then
+    printf '[ERROR] %s: could not replace output file\n' "${inputFile}" >&2
+    cleanup
+    return 1
+  fi
+
+  temporaryFile=''
+  rm -f -- "${metadataFile}" "${stringFile}"
+  metadataFile=''
+  stringFile=''
+
+  if (( ${#evidence[@]} > 0 ))
+  then
+    printf '[REVIEW] %s\n' "${outputFile}"
+    printf '  Metadata evidence remains detectable; AI/deepfake probability is undetermined.\n'
+    printf '  - %s\n' "${evidence[@]}"
+    return 2
+  fi
+
+  printf '[OK] %s: no recognized textual AI/C2PA/JUMBF metadata indicator found\n' "${outputFile}"
+  return 0
+}
+
+trap cleanup EXIT HUP INT TERM
+
+while (( $# > 0 ))
+do
+  case "${1}" in
+    -r|--recursive)
+      isRecursive=true
+      shift
+      ;;
+    -h|--help)
+      showUsage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      printf 'Error: unknown option: %s\n' "${1}" >&2
+      showUsage >&2
+      exit 64
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if (( $# < 1 || $# > 2 ))
+then
+  showUsage >&2
+  exit 64
+fi
+
+readonly inputPath="${1}"
+readonly outputPath="${2:-}"
+
+requireCommand convert
+requireCommand exiftool
+requireCommand strings
+
+if [[ -f "${inputPath}" ]]
+then
+  if ${isRecursive}
+  then
+    printf 'Error: --recursive is only valid for a directory\n' >&2
+    exit 64
+  fi
+
+  processFile "${inputPath}" "${outputPath:-${inputPath}}"
+  exit $?
+fi
+
+if [[ ! -d "${inputPath}" ]]
+then
+  printf 'Error: input path does not exist: %s\n' "${inputPath}" >&2
+  exit 66
+fi
+
+if [[ -n "${outputPath}" ]]
+then
+  printf 'Error: directory mode edits files in place and accepts no output path\n' >&2
+  exit 64
+fi
+
+findDepthArguments=(-maxdepth 1)
+if ${isRecursive}
+then
+  findDepthArguments=()
+fi
+
+processedCount=0
+okCount=0
+reviewCount=0
+errorCount=0
+
+while IFS= read -r -d '' imageFile
+do
+  (( processedCount += 1 ))
+
+  if processFile "${imageFile}" "${imageFile}"
+  then
+    (( okCount += 1 ))
+  else
+    processStatus=$?
+    if (( processStatus == 2 ))
+    then
+      (( reviewCount += 1 ))
+    else
+      (( errorCount += 1 ))
+    fi
+  fi
+done < <(
+  find "${inputPath}" "${findDepthArguments[@]}" -type f \
+    \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \
+       -o -iname '*.webp' -o -iname '*.tif' -o -iname '*.tiff' \
+       -o -iname '*.avif' -o -iname '*.heic' \) \
+    -print0 \
+    | sort -z
+)
+
+printf '\nSummary: %d processed, %d OK, %d review, %d failed\n' \
+  "${processedCount}" "${okCount}" "${reviewCount}" "${errorCount}"
+
+if (( errorCount > 0 ))
+then
+  exit 1
+fi
+
+if (( reviewCount > 0 ))
+then
+  exit 2
+fi
+
+exit 0
