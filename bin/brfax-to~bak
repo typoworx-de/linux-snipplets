@@ -1,0 +1,138 @@
+#!/bin/bash
+
+set -e
+
+# ── ARGUMENT CHECK ─────────────────────────────────────────────────────
+if [[ -z "$1" ]] || [[ -z "$2" ]]
+then
+  echo "Syntax: $0 [Fax Number] [PDF Document]"
+  exit 1
+fi
+
+faxRecipient=""
+faxflattenedRecipient=""
+pdfFile=""
+
+# ── CONFIG ─────────────────────────────────────────────────────────────
+enableChunks=false
+maxPages=25
+requiredTools=(pdfinfo pdfseparate pdfunite brpcfax)
+
+# ── TOOL CHECK ─────────────────────────────────────────────────────────
+for tool in "${requiredTools[@]}"
+do
+  if ! command -v "${tool}" >/dev/null 2>&1
+  then
+    echo "❌ Error: Required tool '${tool}' is not installed."
+    echo "   👉 Install with:"
+    echo "      sudo apt update && sudo apt install poppler-utils"
+    echo "      brpcfax must also be available in PATH"
+    exit 1
+  fi
+done
+
+positionalArgs=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --chunked)
+      # Look ahead: only treat as number if the next arg is purely numeric
+      if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
+        enableChunks=true
+        maxPages="$2"
+        shift 2
+        continue
+      elif [[ -n "$2" && "$2" =~ ^(yes|true)$ ]]; then
+        enableChunks=true
+        shift 2
+        continue
+      elif [[ -n "$2" && "$2" =~ ^(no|false)$ ]]; then
+        enableChunks=false
+        shift 2
+        continue
+      fi
+      # If not numeric/yes/no, treat --chunked as standalone flag
+      enableChunks=true
+      shift
+      ;;
+    --)
+      shift
+      positionalArgs+=("$@")
+      break
+      ;;
+    -*)
+      shift
+      ;;
+    *)
+      positionalArgs+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Last two positional arguments
+if (( ${#positionalArgs[@]} < 2 )); then
+  echo "❌ Missing faxRecipient or pdfFile" >&2
+  exit 1
+fi
+
+faxRecipient="${positionalArgs[-2]}"
+
+# Sanitize faxRecipient: keep only digits
+faxflattenedRecipient="${faxRecipient//[!0-9]/}"
+
+pdfFile="${positionalArgs[-1]}"
+
+if [[ ! -f "$pdfFile" ]];
+then
+  echo "❌ Missing PDF file argument"
+  exit 1
+fi
+
+# ── PAGE COUNT ────────────────────────────────────────────────────────
+pageCount=$(pdfinfo "${pdfFile}" | awk '/^Pages:/ {print $2}')
+
+if [[ -z "${pageCount}" ]]
+then
+  echo "❌ Unable to determine page count for '${pdfFile}'"
+  exit 1
+fi
+
+baseName=$(basename "${pdfFile}" .pdf)
+tmpDir="/tmp/brfax/${baseName}"
+mkdir -p "${tmpDir}"
+
+# ── PROCESS PDF ────────────────────────────────────────────────────────
+if $enableChunks && (( pageCount > maxPages ));
+then
+  echo "📄 PDF has ${pageCount} pages. Splitting into ${maxPages}-page chunks..."
+  for (( i=1; i<=pageCount; i+=maxPages ))
+  do
+    end=$(( i + maxPages - 1 ))
+    if (( end > pageCount ))
+    then
+      end=${pageCount}
+    fi
+
+    chunkFile="${tmpDir}/${baseName}.page${i}-${end}.pdf"
+
+    echo "📄 Creating chunk: pages ${i}-${end}"
+    pdfseparate -f "${i}" -l "${end}" "${pdfFile}" "${tmpDir}/${baseName}-%d.pdf"
+    pdfunite "${tmpDir}/${baseName}"-*.pdf "${chunkFile}"
+    rm -f "${tmpDir}/${baseName}"-*.pdf
+
+    echo "📠 Sending to ${faxflattenedRecipient} (${faxRecipient}), pages ${i}-${end}"
+    brpcfax -o fax-number="${faxflattenedRecipient}" "${chunkFile}"
+
+    pagesInChunk=$(( end - i + 1 ))
+    sleepSeconds=$(( pagesInChunk * 15 ))
+    echo "⏳Waiting ${sleepSeconds}s for device to finish sending..."
+    sleep "${sleepSeconds}"
+
+    rm -f "${chunkFile}"
+  done
+
+  rmdir --ignore-fail-on-non-empty "${tmpDir}"
+else
+  echo "📠 Sending in single-transmission to ${faxflattenedRecipient} (${faxRecipient})"
+  brpcfax -o fax-number="${faxflattenedRecipient}" "${pdfFile}"
+fi

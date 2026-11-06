@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -u
+
+idleTimeout=600000
+
+while true; do
+    idleTime=$(xprintidle 2>/dev/null) || {
+        sleep 5
+        continue
+    }
+
+    if [[ "$idleTime" =~ ^[0-9]+$ ]] &&
+       (( idleTime >= idleTimeout )); then
+
+        locked=$(gdbus call --session \
+            --dest com.canonical.Unity \
+            --object-path /com/canonical/Unity/Session \
+            --method com.canonical.Unity.Session.IsLocked \
+            2>/dev/null) || {
+                sleep 5
+                continue
+            }
+
+        if [[ "$locked" == "(false,)" ]]; then
+            gdbus call --session \
+                --dest com.canonical.Unity \
+                --object-path /com/canonical/Unity/Session \
+                --method com.canonical.Unity.Session.Lock
+        fi
+    fi
+
+    sleep 5
+done

@@ -1,0 +1,15 @@
+[Unit]
+Description=Unity 7 Automatic Session Lock
+Documentation=man:systemd.service(5)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/scratches/bin/unity-auto-lock
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
+

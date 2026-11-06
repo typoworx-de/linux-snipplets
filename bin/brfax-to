@@ -3,20 +3,43 @@
 set -e
 
 # ── ARGUMENT CHECK ─────────────────────────────────────────────────────
-if [[ -z "$1" ]] || [[ -z "$2" ]]
-then
-  echo "Syntax: $0 [Fax Number] [PDF Document]"
-  exit 1
-fi
-
 faxRecipient=""
 faxflattenedRecipient=""
 pdfFile=""
 
 # ── CONFIG ─────────────────────────────────────────────────────────────
 enableChunks=false
+chunkingConfigured=false
 maxPages=25
 requiredTools=(pdfinfo pdfseparate pdfunite brpcfax)
+
+showHelp()
+{
+  cat <<EOF
+Usage: $0 [OPTIONS] FAX_NUMBER PDF_DOCUMENT
+
+Send a PDF document using brpcfax.
+
+Options:
+  --chunked [N|yes|no]  Enable or disable chunking. If N is provided, use N
+                        pages per transmission (default: 25).
+  --max-pages N         Enable chunking and use N pages per transmission.
+  --no-chunk            Disable chunking and send the PDF in one transmission.
+  -h, --help            Show this help message and exit.
+
+If the PDF has more than 25 pages and no chunking option was specified, the
+script asks whether it should enable chunking with the default limit.
+EOF
+}
+
+for argument in "$@"
+do
+  if [[ "${argument}" == "-h" || "${argument}" == "--help" ]]
+  then
+    showHelp
+    exit 0
+  fi
+done
 
 # ── TOOL CHECK ─────────────────────────────────────────────────────────
 for tool in "${requiredTools[@]}"
@@ -34,24 +57,55 @@ done
 positionalArgs=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --no-chunk)
+      enableChunks=false
+      chunkingConfigured=true
+      shift
+      ;;
+    --max-pages)
+      if [[ -z "${2:-}" || ! "$2" =~ ^[1-9][0-9]*$ ]]
+      then
+        echo "❌ Error: --max-pages requires a positive integer." >&2
+        exit 1
+      fi
+      enableChunks=true
+      chunkingConfigured=true
+      maxPages="$2"
+      shift 2
+      ;;
+    --max-pages=*)
+      maxPages="${1#*=}"
+      if [[ ! "${maxPages}" =~ ^[1-9][0-9]*$ ]]
+      then
+        echo "❌ Error: --max-pages requires a positive integer." >&2
+        exit 1
+      fi
+      enableChunks=true
+      chunkingConfigured=true
+      shift
+      ;;
     --chunked)
       # Look ahead: only treat as number if the next arg is purely numeric
       if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
         enableChunks=true
+        chunkingConfigured=true
         maxPages="$2"
         shift 2
         continue
       elif [[ -n "$2" && "$2" =~ ^(yes|true)$ ]]; then
         enableChunks=true
+        chunkingConfigured=true
         shift 2
         continue
       elif [[ -n "$2" && "$2" =~ ^(no|false)$ ]]; then
         enableChunks=false
+        chunkingConfigured=true
         shift 2
         continue
       fi
       # If not numeric/yes/no, treat --chunked as standalone flag
       enableChunks=true
+      chunkingConfigured=true
       shift
       ;;
     --)
@@ -60,7 +114,8 @@ while [[ $# -gt 0 ]]; do
       break
       ;;
     -*)
-      shift
+      echo "❌ Error: Unknown option '$1'." >&2
+      exit 1
       ;;
     *)
       positionalArgs+=("$1")
@@ -71,7 +126,12 @@ done
 
 # Last two positional arguments
 if (( ${#positionalArgs[@]} < 2 )); then
-  echo "❌ Missing faxRecipient or pdfFile" >&2
+  showHelp >&2
+  exit 1
+fi
+
+if (( ${#positionalArgs[@]} > 2 )); then
+  echo "❌ Error: Too many positional arguments." >&2
   exit 1
 fi
 
@@ -95,6 +155,27 @@ if [[ -z "${pageCount}" ]]
 then
   echo "❌ Unable to determine page count for '${pdfFile}'"
   exit 1
+fi
+
+if (( pageCount > 25 )) && ! $chunkingConfigured
+then
+  while true
+  do
+    read -r -p "PDF has ${pageCount} pages. Enable chunking with a maximum of ${maxPages} pages per transmission? [y/n] " chunkingAnswer
+    case "${chunkingAnswer}" in
+      [Yy]|[Yy][Ee][Ss])
+        enableChunks=true
+        break
+        ;;
+      [Nn]|[Nn][Oo])
+        enableChunks=false
+        break
+        ;;
+      *)
+        echo "Please answer y or n."
+        ;;
+    esac
+  done
 fi
 
 baseName=$(basename "${pdfFile}" .pdf)
